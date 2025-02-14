@@ -1,0 +1,26 @@
+services:
+  490-test:
+    build: 
+      context: ./checkhen
+      args:
+        - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
+    container_name: 490-test
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Zmlyc3QtbWFzdG9kb24tODMuY2xlcmsuYWNjb3VudHMuZGV2JA
+      - CLERK_SECRET_KEY=sk_test_aT6wTiUOgvehOqoLHdwnzWnnN78MD6u0xRI2fmgg0l
+  db:
+    image: postgres:13
+    user: $DOCKER_USER
+    container_name: 490-db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
