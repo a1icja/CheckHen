@@ -1,16 +1,16 @@
 import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import type { NextApiRequest, NextApiResponse } from 'next'
- 
+
 type ResponseData = {
   message: string
 }
- 
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ResponseData>
 ) {
-  if (req.method !== "GET") {
+  if (req.method !== "POST") {
     return res.status(405).json({ message: "Method Not Allowed" });
   }
 
@@ -19,7 +19,7 @@ export default async function handler(
       {
         createdAt: "desc",
       },
-    ]
+    ],
   });
 
   if (!currentClass) {
@@ -31,28 +31,17 @@ export default async function handler(
     return res.status(500).json({ message: "No class found" });
   }
 
-  const dbCheckInUsers = await prisma.handRaise.findMany({
+  const newClassDuration = Math.floor(
+    (new Date().getTime() - currentClass.createdAt.getTime()) / 60000
+  );
+  const updatedClass = await prisma.class.update({
     where: {
-      isRated: false,
-      classId: currentClass.id,
+      id: currentClass.id,
     },
-    include: {
-        user: true,
-    }
+    data: {
+      duration: newClassDuration,
+    },
   });
 
-  const resObject = [];
-
-  const client = await clerkClient();
-
-    for (const entry of dbCheckInUsers) {
-        const clerkUser = await client.users.getUser(entry.user.clerk_id);
-        resObject.push({
-            email: clerkUser.primaryEmailAddress?.emailAddress,
-            name: clerkUser.fullName,
-            isAck: entry.isAcknowledged
-        })
-    }
-
-  res.status(200).json({message: JSON.stringify(resObject)});
+  res.status(200).json({ message: JSON.stringify(updatedClass) });
 }

@@ -12,6 +12,11 @@ export default function Dashboard() {
   const fetchCheckInsData = async () => {
     const response = await fetch('/api/admin/fetch-check-ins');
     const data = await response.json();
+
+    if (!response.ok) {
+      return;
+    }
+
     const jsonData: SimpleUser[] = JSON.parse(data.message);
 
     const checkedInUsers = jsonData.map((user) => {
@@ -60,10 +65,10 @@ export default function Dashboard() {
   const rateVHRButton = (email: string) => {
     return (
       <div className='flex gap-4'>
-        <Button onClick={() => rateHandRaise(email, true)} color="#4F7942">
+        <Button onClick={() => rateHandRaise(email, true)} color="orange">
           Good
         </Button>
-        <Button onClick={() => rateHandRaise(email, false)} color="red">
+        <Button onClick={() => rateHandRaise(email, false)} color="blue">
           Bad
         </Button>
       </div>
@@ -73,6 +78,11 @@ export default function Dashboard() {
   const fetchHandRaiseData = async () => {
     const response = await fetch('/api/admin/fetch-hand-raise');
     const data = await response.json();
+
+    if (!response.ok) {
+      return;
+    };
+
     const jsonData: (SimpleUser & { isAck: boolean })[] = JSON.parse(data.message);
 
     const handStatus = jsonData.map((user) => {

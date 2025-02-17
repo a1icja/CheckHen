@@ -1,2 +1,2 @@
-pgdata/*
-!pgdata/.gitkeep
+# NixOS weirdness
+result

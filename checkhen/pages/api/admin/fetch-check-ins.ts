@@ -24,6 +24,11 @@ export default async function handler(
     return res.status(500).json({ message: "No class found" });
   }
 
+  const classEnd = new Date(dbCurrentClass.createdAt.getTime() + dbCurrentClass.duration * 60000);
+  if (classEnd < new Date()) {
+    return res.status(500).json({ message: "No class found" });
+  }
+
   const dbCheckInUsers = await prisma.checkIn.findMany({
     where: {
       classId: dbCurrentClass.id,
