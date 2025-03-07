@@ -41,6 +41,22 @@ export default async function handler(
     }
   });
 
+  // Count how many hand raises each user has
+  const dbHandRaises = await prisma.handRaise.findMany({
+    where: {
+      classId: currentClass.id,
+    },
+  });
+
+  const handRaiseCounts: Record<string, number> = {};
+  for (const handRaise of dbHandRaises) {
+    if (handRaiseCounts[handRaise.userId]) {
+      handRaiseCounts[handRaise.userId]++;
+    } else {
+      handRaiseCounts[handRaise.userId] = 1;
+    }
+  }
+
   const resObject = [];
 
   const client = await clerkClient();
@@ -50,7 +66,8 @@ export default async function handler(
         resObject.push({
             email: clerkUser.primaryEmailAddress?.emailAddress,
             name: clerkUser.fullName,
-            isAck: entry.isAcknowledged
+            isAck: entry.isAcknowledged,
+            handRaiseCount: handRaiseCounts[entry.userId] || 0
         })
     }
 

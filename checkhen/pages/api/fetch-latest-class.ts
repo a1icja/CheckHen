@@ -1,9 +1,11 @@
 import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { Class } from '@prisma/client';
  
 type ResponseData = {
   message: string
+  currentClass?: Class
 }
  
 export default async function handler(

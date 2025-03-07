@@ -1,32 +1,29 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import type { NextApiRequest, NextApiResponse } from 'next'
- 
+
 type ResponseData = {
-  message: string
-}
- 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<ResponseData>
-) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method Not Allowed" });
+  message: string;
+};
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
   const dbCurrentClass = await prisma.class.findFirst({
     orderBy: {
-      createdAt: "desc",
+      createdAt: 'desc',
     },
   });
 
   if (!dbCurrentClass) {
-    return res.status(500).json({ message: "No class found" });
+    return res.status(500).json({ message: 'No class found' });
   }
 
   const classEnd = new Date(dbCurrentClass.createdAt.getTime() + dbCurrentClass.duration * 60000);
   if (classEnd < new Date()) {
-    return res.status(500).json({ message: "No class found" });
+    return res.status(500).json({ message: 'No class found' });
   }
 
   const dbCheckInUsers = await prisma.checkIn.findMany({
@@ -34,21 +31,46 @@ export default async function handler(
       classId: dbCurrentClass.id,
     },
     include: {
-        user: true,
-    }
+      user: true,
+    },
   });
+
+  // Count how many hand raises each user has
+  const dbHandRaises = await prisma.handRaise.findMany({
+    where: {
+      classId: dbCurrentClass.id,
+    },
+  });
+
+  const handRaiseCounts: Record<string, number> = {};
+  for (const handRaise of dbHandRaises) {
+    if (handRaiseCounts[handRaise.userId]) {
+      handRaiseCounts[handRaise.userId]++;
+    } else {
+      handRaiseCounts[handRaise.userId] = 1;
+    }
+  }
 
   const resObject = [];
 
   const client = await clerkClient();
 
-    for (const checkIn of dbCheckInUsers) {
-        const clerkUser = await client.users.getUser(checkIn.user.clerk_id);
-        resObject.push({
-            email: clerkUser.primaryEmailAddress?.emailAddress,
-            name: clerkUser.fullName,
-        })
-    }
+  const clerkUsers = await client.users.getUserList({
+    userId: dbCheckInUsers.map((checkIn) => checkIn.user.clerk_id),
+    limit: dbCheckInUsers.length,
+  });
 
-  res.status(200).json({message: JSON.stringify(resObject)});
+  for (const checkIn of dbCheckInUsers) {
+    const clerkUser = clerkUsers.data.find((user) => user.id === checkIn.user.clerk_id);
+    if (!clerkUser) return;
+    resObject.push({
+      email: clerkUser.primaryEmailAddress?.emailAddress,
+      name: clerkUser.fullName,
+      handRaiseCount: handRaiseCounts[checkIn.userId] || 0,
+    });
+    // Wait for 1s to avoid rate limiting
+    // await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  res.status(200).json({ message: JSON.stringify(resObject) });
 }

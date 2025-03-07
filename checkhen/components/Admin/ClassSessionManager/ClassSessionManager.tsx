@@ -6,9 +6,13 @@ import { IconCheck, IconX } from '@tabler/icons-react';
 export default function ClassSessionManager({
   currentClass,
   setCurrentClass,
+  currentClassId,
+  setCurrentClassId,
 }: {
   currentClass: string;
   setCurrentClass: (value: string) => void;
+  currentClassId: string;
+  setCurrentClassId: (value: string) => void;
 }) {
   const [opened, { open, close }] = useDisclosure(false);
   const [modalClassName, setModalClassName] = useState<string>('');
@@ -20,7 +24,7 @@ export default function ClassSessionManager({
   const checkIcon = <IconCheck size={20} />;
 
   const fetchCurrentClass = async () => {
-    const response = await fetch('/api/admin/fetch-latest-class');
+    const response = await fetch('/api/fetch-latest-class');
     if (!response.ok) {
       setCurrentClass('');
       return;
@@ -35,6 +39,9 @@ export default function ClassSessionManager({
       return;
     }
 
+    if (currentClassId === jsonData.id) return;
+
+    setCurrentClassId(jsonData.id);
     const formattedDate = date.toLocaleString();
     setCurrentClass(`${jsonData.name} - ${formattedDate}`);
   };
