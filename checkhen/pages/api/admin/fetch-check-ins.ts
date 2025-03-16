@@ -62,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   for (const checkIn of dbCheckInUsers) {
     const clerkUser = clerkUsers.data.find((user) => user.id === checkIn.user.clerk_id);
-    if (!clerkUser) return;
+    if (!clerkUser) continue;
     resObject.push({
       email: clerkUser.primaryEmailAddress?.emailAddress,
       name: clerkUser.fullName,
