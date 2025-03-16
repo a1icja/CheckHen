@@ -88,65 +88,6 @@ const handleSocketConnection = async (socket: Socket) => {
   socket.join(classId);
 };
 
-const handleUserHandAck = async (socket: Socket, data: any) => {
-  const email = data.email;
-  const classId = data.classId;
-
-  // Fetch check-in for socketId
-  const dbCheckIn = await prisma.checkIn.findFirst({
-    where: {
-      user: {
-        email: email,
-      },
-      class: {
-        id: classId,
-      },
-    },
-  });
-
-  console.log(dbCheckIn);
-
-  if (!dbCheckIn) {
-    return;
-  }
-
-  const dbHandRaise = await prisma.handRaise.findFirst({
-    where: {
-      user: {
-        email: email,
-      },
-      class: {
-        id: classId,
-      },
-      isAcknowledged: false,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-
-  const updatedHandRaise = await prisma.handRaise.update({
-    where: {
-      id: dbHandRaise.id,
-    },
-    data: {
-      isAcknowledged: true,
-    },
-  });
-
-  console.log(updatedHandRaise);
-
-  if (!updatedHandRaise) {
-    return;
-  }
-
-  console.log("User hand acked");
-
-  io.sockets.emit("check-raised-hands", {});
-
-  console.log("User hand acked emitted");
-};
-
 io.on("connection", async (socket) => {
   await handleSocketConnection(socket);
 
@@ -163,13 +104,12 @@ io.on("connection", async (socket) => {
   });
 
   socket.onAny((event, ...args) => {
-    switch (event) {
-      case "user-hand-update":
-        io.sockets.emit("user-hand-update", args[0]);
-        break;
-      case "user-hand-acked":
-        handleUserHandAck(socket, args[0]);
-        break;
+    if (event === "user-hand-update") {
+      io.sockets.emit("user-hand-update", args[0]);
+    }
+
+    if (event === "user-hand-acked") {
+      io.sockets.emit("check-raised-hands", args[0]);
     }
   });
 });

@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { User } from '@clerk/nextjs/server';
-import { Class } from '@prisma/client';
 import { Button } from '@mantine/core';
 import { getSocket } from '@/lib/socket';
 import { Socket } from 'socket.io-client';
 
 export default function HomePage() {
+  const ws = useRef<Socket | null>(null);
+
   const [user, setUser] = useState<User>();
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [checkedIn, setCheckedIn] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
   const [currentClassId, setCurrentClassId] = useState(null);
   const [currentClassName, setCurrentClassName] = useState('');
@@ -19,25 +18,10 @@ export default function HomePage() {
     setUser(data.user);
   };
 
-  const fetchCheckInStatus = async () => {
-    const response = await fetch('/api/student/fetch-check-in');
-    setCheckedIn(response.ok);
-  };
-
   const fetchHandRaiseStatus = async () => {
     const response = await fetch('/api/student/fetch-hand-raise');
     setHandRaised(response.ok);
   };
-
-  // const checkIn = async () => {
-  //   const response = await fetch('/api/student/check-in', {
-  //     method: 'POST',
-  //   });
-
-  //   if (response.ok) {
-  //     setCheckedIn(true);
-  //   }
-  // };
 
   const toggleHandRaise = async () => {
     const response = await fetch('/api/student/toggle-vhr', {
@@ -48,8 +32,7 @@ export default function HomePage() {
 
     if (response.ok) {
       setHandRaised(data.status);
-      socket?.emit("ping", "pong");
-      socket?.emit('user-hand-update', {
+      ws.current?.emit('user-hand-update', {
         classId: data.classId,
         isRaised: data.status,
       });
@@ -85,41 +68,24 @@ export default function HomePage() {
   useEffect(() => {
     fetchUser();
     fetchCurrentClass();
-    fetchCheckInStatus();
     fetchHandRaiseStatus();
 
     const _interval = setInterval(() => {
       fetchCurrentClass();
-      fetchCheckInStatus();
-      // fetchHandRaiseStatus();
     }, 5000);
   }, []);
 
   useEffect(() => {
-    console.log(user);
     if (!user || !currentClassId) return;
 
     const userId = user.id;
     const classId = currentClassId;
     const email = user.emailAddresses[0]?.emailAddress || '';
 
-    console.log(email);
+    ws.current = getSocket(userId, classId, email);
 
-    const _socket = getSocket(userId, classId, email);
-    setSocket(_socket);
-
-    // socket?.on('check-raised-hands', () => {
-    //   fetchHandRaiseStatus();
-    // });
-
-    socket?.onAny((event, ...args) => {
-      switch (event) {
-        case 'check-raised-hands':
-          fetchHandRaiseStatus();
-          break;
-        default:
-          console.log('Unknown event:', event);
-      }
+    ws.current?.on('check-raised-hands', () => {
+      fetchHandRaiseStatus();
     });
   }, [user, currentClassId]);
 
@@ -137,9 +103,6 @@ export default function HomePage() {
           </>
         )}
         <div className="flex justify-center pt-2 gap-2">
-          {/* <Button color="blue" disabled={!currentClassName || checkedIn} onClick={checkIn}>
-            Check In
-          </Button> */}
           <Button
             color={handRaised ? '#FFC20A' : '#0C7BDC'}
             disabled={!currentClassName}

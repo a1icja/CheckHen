@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { User } from '@clerk/nextjs/server';
 import { Button } from '@mantine/core';
 import ClassSessionManager from '@/components/Admin/ClassSessionManager/ClassSessionManager';
@@ -8,13 +8,14 @@ import { getSocket } from '@/lib/socket';
 import { Socket } from 'socket.io-client';
 
 export default function Dashboard() {
+  const ws = useRef<Socket | null>(null);
+
   const [user, setUser] = useState<User>();
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [currentClassId, setCurrentClassId] = useState<string>('');
   const [currentClass, setCurrentClass] = useState<string>('');
   const [checkedInUsers, setCheckedInUsers] = useState<Record<string, any>[]>([]);
   const [raisedHands, setRaisedHands] = useState<Record<string, any>[]>([]);
-
+  
   const fetchUser = async () => {
     const response = await fetch('/api/get-clerk-info');
     const data = await response.json();
@@ -53,8 +54,7 @@ export default function Dashboard() {
       return;
     }
 
-    console.log(socket);
-    socket?.emit('ack-hand-raise', { email, classId: currentClassId });
+    ws.current?.emit('user-hand-acked', { email, classId: currentClassId });
 
     fetchHandRaiseData();
   };
@@ -125,29 +125,20 @@ export default function Dashboard() {
 
     const _interval = setInterval(() => {
       fetchCheckInsData();
-      // fetchHandRaiseData();
     }, 2500);
   }, []);
 
   useEffect(() => {
-    console.log(user);
     if (!user || !currentClassId) return;
 
     const userId = user.id;
     const classId = currentClassId;
     const email = user.emailAddresses[0]?.emailAddress || '';
 
-    const _socket = getSocket(userId, classId, email);
-    setSocket(_socket);
-
-    socket?.onAny((event, ...args) => {
-      switch (event) {
-        case 'user-hand-update':
-          fetchHandRaiseData();
-          break;
-        default:
-          console.log('Unknown event:', event);
-      }
+    ws.current = getSocket(userId, classId, email);
+    
+    ws.current?.on('user-hand-update', () => {
+      fetchHandRaiseData();
     });
   }, [user, currentClassId]);
 
