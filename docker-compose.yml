@@ -12,6 +12,7 @@ services:
       - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
       - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Zmlyc3QtbWFzdG9kb24tODMuY2xlcmsuYWNjb3VudHMuZGV2JA
       - CLERK_SECRET_KEY=sk_test_aT6wTiUOgvehOqoLHdwnzWnnN78MD6u0xRI2fmgg0l
+      - NTFY_TOPIC=checkhen-ds490
     develop:
       watch:
         - action: rebuild
