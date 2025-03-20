@@ -1,13 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { User } from '@clerk/nextjs/server';
+import { Button } from '@mantine/core';
 import ClassSessionManager from '@/components/Admin/ClassSessionManager/ClassSessionManager';
 import { TableScrollArea } from '@/components/TableScrollArea/TableScrollArea';
 import { SimpleUser } from '@/types';
-import { Button } from '@mantine/core';
+import { getSocket } from '@/lib/socket';
+import { Socket } from 'socket.io-client';
 
 export default function Dashboard() {
+  const ws = useRef<Socket | null>(null);
+
+  const [user, setUser] = useState<User>();
+  const [currentClassId, setCurrentClassId] = useState<string>('');
   const [currentClass, setCurrentClass] = useState<string>('');
   const [checkedInUsers, setCheckedInUsers] = useState<Record<string, any>[]>([]);
   const [raisedHands, setRaisedHands] = useState<Record<string, any>[]>([]);
+  
+  const fetchUser = async () => {
+    const response = await fetch('/api/get-clerk-info');
+    const data = await response.json();
+    setUser(data.user);
+  };
 
   const fetchCheckInsData = async () => {
     const response = await fetch('/api/admin/fetch-check-ins');
@@ -23,6 +36,7 @@ export default function Dashboard() {
       return {
         id: user.name,
         email: user.email,
+        handRaises: user.handRaiseCount,
       };
     });
 
@@ -40,8 +54,10 @@ export default function Dashboard() {
       return;
     }
 
+    ws.current?.emit('user-hand-acked', { email, classId: currentClassId });
+
     fetchHandRaiseData();
-  }
+  };
 
   // TODO: implement api endpoint
   const rateHandRaise = async (email: string, good: boolean) => {
@@ -55,21 +71,25 @@ export default function Dashboard() {
       return;
     }
 
-    fetchCheckInsData();
+    fetchHandRaiseData();
   };
 
   const ackVHRButton = (email: string, disabled: boolean) => {
-    return <Button onClick={() => ackHandRaise(email)} disabled={disabled}>Acknowledge</Button>;
+    return (
+      <Button onClick={() => ackHandRaise(email)} disabled={disabled}>
+        Acknowledge
+      </Button>
+    );
   };
 
   const rateVHRButton = (email: string) => {
     return (
-      <div className='flex gap-4'>
-        <Button onClick={() => rateHandRaise(email, true)} color="orange">
-          Good
+      <div className="flex gap-4">
+        <Button onClick={() => rateHandRaise(email, true)} color="black">
+          ✅
         </Button>
-        <Button onClick={() => rateHandRaise(email, false)} color="blue">
-          Bad
+        <Button onClick={() => rateHandRaise(email, false)} color="black">
+          ❌
         </Button>
       </div>
     );
@@ -81,7 +101,7 @@ export default function Dashboard() {
 
     if (!response.ok) {
       return;
-    };
+    }
 
     const jsonData: (SimpleUser & { isAck: boolean })[] = JSON.parse(data.message);
 
@@ -90,6 +110,7 @@ export default function Dashboard() {
         id: user.name,
         email: user.email,
         ackButton: ackVHRButton(user.email, user.isAck),
+        handRaises: user.handRaiseCount,
         rateButton: rateVHRButton(user.email),
       };
     });
@@ -98,29 +119,48 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    fetchUser();
     fetchCheckInsData();
     fetchHandRaiseData();
 
     const _interval = setInterval(() => {
       fetchCheckInsData();
-      fetchHandRaiseData();
     }, 2500);
   }, []);
+
+  useEffect(() => {
+    if (!user || !currentClassId) return;
+
+    const userId = user.id;
+    const classId = currentClassId;
+    const email = user.emailAddresses[0]?.emailAddress || '';
+
+    ws.current = getSocket(userId, classId, email);
+    
+    ws.current?.on('user-hand-update', () => {
+      fetchHandRaiseData();
+    });
+  }, [user, currentClassId]);
 
   return (
     <>
       <div className="pr-19 grid grid-cols-2 gap-4">
         <div>
-          <ClassSessionManager currentClass={currentClass} setCurrentClass={setCurrentClass} />
+          <ClassSessionManager
+            currentClass={currentClass}
+            setCurrentClass={setCurrentClass}
+            currentClassId={currentClassId}
+            setCurrentClassId={setCurrentClassId}
+          />
         </div>
         <div>
           <h1>Checked In Students</h1>
-          <TableScrollArea columns={['Name', 'Email']} data={checkedInUsers} />
+          <TableScrollArea columns={['Name', 'Email', 'Hand Raises']} data={checkedInUsers} />
         </div>
         <div className="pl-15">
           <h1>Raised Hands</h1>
           <TableScrollArea
-            columns={['Name', 'Email', 'Acknowledge', 'Rate']}
+            columns={['Name', 'Email', 'Acknowledge', 'Hand Raises', 'Rate']}
             data={raisedHands}
           />
         </div>

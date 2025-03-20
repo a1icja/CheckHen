@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 type ResponseData = {
   message: string;
   status?: boolean;
+  classId?: string;
 };
 
 export default async function handler(
@@ -89,5 +90,5 @@ export default async function handler(
 
   res
     .status(200)
-    .json({ message: `Hand raised: ${status}`, status });
+    .json({ message: `Hand raised: ${status}`, status, classId: currentClass.id });
 }

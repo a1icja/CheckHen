@@ -3,7 +3,8 @@ import { clerkClient, clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/
 // TODO: MAKE THIS AN ENV VAR
 const adminEmails = [
   'alicja@bu.edu',
-  'langd0n@bu.edu'
+  'langd0n@bu.edu',
+  'pawel@bu.edu'
 ];
 const isAdminRoute = createRouteMatcher(['/admin(.*)', '/api/admin(.*)']);
 

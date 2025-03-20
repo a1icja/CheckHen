@@ -1,0 +1,17 @@
+{
+  "name": "socket-server",
+  "packageManager": "yarn@4.6.0",
+  "dependencies": {
+    "@prisma/client": "^6.4.1",
+    "prisma": "6.3.1",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "scripts": {
+    "prisma-gen": "cp ../checkhen/prisma/schema.prisma ./prisma/schema.prisma && yarn prisma generate",
+    "build": "tsc",
+    "dev": "tsc && node dist/index.js"
+  }
+}

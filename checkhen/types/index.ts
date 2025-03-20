@@ -1,6 +1,7 @@
 export type SimpleUser = {
   email: string;
   name: string;
+  handRaiseCount: number;
 };
 
 export type StudentStatus = {
