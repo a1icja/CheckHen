@@ -71,6 +71,8 @@ export default function Dashboard() {
       return;
     }
 
+    ws.current?.emit('user-hand-acked', { email, classId: currentClassId });
+
     fetchHandRaiseData();
   };
 

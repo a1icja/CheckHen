@@ -1,9 +1,10 @@
 services:
   490-test:
-    build: 
-      context: ./checkhen
-      args:
-        - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
+    # build: 
+    #   context: ./checkhen
+    #   args:
+    #     - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
+    image: ghcr.io/a1icja/checkhen:main
     container_name: 490-test
     ports:
       - "3000:3000"
