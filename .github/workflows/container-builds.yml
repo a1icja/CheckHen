@@ -17,8 +17,10 @@ jobs:
       matrix:
         include:
           - dockerfile: ./checkhen/Dockerfile
+            context: ./checkhen
             image: ghcr.io/a1icja/checkhen
           - dockerfile: ./socket-server/Dockerfile
+            context: ./socket-server
             image: ghcr.io/a1icja/socket-server
     permissions:
       contents: read
@@ -52,7 +54,7 @@ jobs:
         id: push
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
-          context: .
+          context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
