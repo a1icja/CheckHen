@@ -18,7 +18,7 @@ jobs:
         include:
           - dockerfile: ./checkhen/Dockerfile
             image: ghcr.io/a1icja/checkhen
-          - dockerfile: ./socker-server/Dockerfile
+          - dockerfile: ./socket-server/Dockerfile
             image: ghcr.io/a1icja/socket-server
     permissions:
       contents: read
