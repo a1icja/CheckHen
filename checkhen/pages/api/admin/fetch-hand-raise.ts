@@ -48,6 +48,16 @@ export default async function handler(
     },
   });
 
+  const overallHandRaises = await prisma.handRaise.findMany();
+  const overallHandRaiseCounts: Record<string, number> = {};
+  for (const handRaise of overallHandRaises) {
+    if (overallHandRaiseCounts[handRaise.userId]) {
+      overallHandRaiseCounts[handRaise.userId]++;
+    } else {
+      overallHandRaiseCounts[handRaise.userId] = 1;
+    }
+  }
+
   const handRaiseCounts: Record<string, number> = {};
   for (const handRaise of dbHandRaises) {
     if (handRaiseCounts[handRaise.userId]) {
@@ -67,7 +77,8 @@ export default async function handler(
             email: clerkUser.primaryEmailAddress?.emailAddress,
             name: clerkUser.fullName,
             isAck: entry.isAcknowledged,
-            handRaiseCount: handRaiseCounts[entry.userId] || 0
+            handRaiseCount: handRaiseCounts[entry.userId] || 0,
+            overallHandRaiseCount: overallHandRaiseCounts[entry.userId] || 0,
         })
     }
 

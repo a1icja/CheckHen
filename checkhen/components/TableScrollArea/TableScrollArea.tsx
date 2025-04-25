@@ -22,7 +22,8 @@ export function TableScrollArea({
 
   return (
     <ScrollArea h={300} onScrollPositionChange={({ y }) => setScrolled(y !== 0)}>
-      <Table miw={700}>
+      {/* TODO: Figure out how to sort */}
+      <Table stickyHeader aria-sort='ascending' striped highlightOnHover variant="vertical">
         <Table.Thead className={cx(classes.header, { [classes.scrolled]: scrolled })}>
           <Table.Tr>
             {columns.map((column) => (

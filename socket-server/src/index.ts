@@ -111,5 +111,9 @@ io.on("connection", async (socket) => {
     if (event === "user-hand-acked") {
       io.sockets.emit("check-raised-hands", args[0]);
     }
+
+    if (event === "chat-message-sent") {
+      io.sockets.emit("fetch-messages", args[0]);
+    }
   });
 });

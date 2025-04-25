@@ -137,7 +137,7 @@ export default function ClassSessionManager({
           </Button>
         </div>
       </Modal>
-      <div className="flex justify-center pt-2 gap-2">
+      <div className="flex justify-center pt-2 gap-2 flex-wrap">
         <Button onClick={open} color="#4F7942" disabled={!!currentClass}>
           Start New Class
         </Button>

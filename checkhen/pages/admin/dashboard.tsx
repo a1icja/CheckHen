@@ -36,7 +36,6 @@ export default function Dashboard() {
       return {
         id: user.name,
         email: user.email,
-        handRaises: user.handRaiseCount,
       };
     });
 
@@ -59,7 +58,6 @@ export default function Dashboard() {
     fetchHandRaiseData();
   };
 
-  // TODO: implement api endpoint
   const rateHandRaise = async (email: string, good: boolean) => {
     const res = await fetch('/api/admin/rate-hand-raise', {
       method: 'POST',
@@ -79,7 +77,7 @@ export default function Dashboard() {
   const ackVHRButton = (email: string, disabled: boolean) => {
     return (
       <Button onClick={() => ackHandRaise(email)} disabled={disabled}>
-        Acknowledge
+        ✅
       </Button>
     );
   };
@@ -88,10 +86,10 @@ export default function Dashboard() {
     return (
       <div className="flex gap-4">
         <Button onClick={() => rateHandRaise(email, true)} color="black">
-          ✅
+          👍
         </Button>
         <Button onClick={() => rateHandRaise(email, false)} color="black">
-          ❌
+          👎
         </Button>
       </div>
     );
@@ -110,11 +108,14 @@ export default function Dashboard() {
     const handStatus = jsonData.map((user) => {
       return {
         id: user.name,
-        email: user.email,
-        ackButton: ackVHRButton(user.email, user.isAck),
-        handRaises: user.handRaiseCount,
-        rateButton: rateVHRButton(user.email),
-      };
+        handRaises: `${user.handRaiseCount} / ${user.overallHandRaiseCount}`,
+        actions: (
+          <div className="flex gap-4">
+            {!user.isAck && ackVHRButton(user.email, user.isAck)}
+            {user.isAck && rateVHRButton(user.email)}
+          </div>
+        ),
+      }
     });
 
     setRaisedHands(handStatus);
@@ -146,7 +147,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="pr-19 grid grid-cols-2 gap-4">
+      <div className="pl-2 pr-2 lg:pl-15 lg:pr-19 grid grid-cols-1 gap-4">
         <div>
           <ClassSessionManager
             currentClass={currentClass}
@@ -156,15 +157,15 @@ export default function Dashboard() {
           />
         </div>
         <div>
-          <h1>Checked In Students</h1>
-          <TableScrollArea columns={['Name', 'Email', 'Hand Raises']} data={checkedInUsers} />
-        </div>
-        <div className="pl-15">
           <h1>Raised Hands</h1>
           <TableScrollArea
-            columns={['Name', 'Email', 'Acknowledge', 'Hand Raises', 'Rate']}
+            columns={['Name', 'Hand Raises', 'Actions']}
             data={raisedHands}
           />
+        </div>
+        <div>
+          <h1>Checked In Students</h1>
+          <TableScrollArea columns={['Name', 'Email']} data={checkedInUsers} />
         </div>
       </div>
     </>
