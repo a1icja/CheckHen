@@ -1,0 +1,71 @@
+name: Container Builds - CheckHen
+
+on:
+  workflow_dispatch:
+    inputs:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
+        description: "Clerk publishable key"
+        required: true
+      NEXT_PUBLIC_EMAIL_DOMAIN:
+        description: "Whitelisted email domain (i.e. bu.edu)"
+        required: true
+      NEXT_PUBLIC_ADMIN_EMAILS:
+        description: "Whitelisted admin emails (i.e. alicja,langd0n,pawel)"
+        required: true
+      tag:
+        description: "Image version tag"
+        required: true
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push-checkhen:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    steps:
+      - id: lower-repo
+        name: Repository to lowercase
+        run: |
+          echo "repository=${GITHUB_REPOSITORY@L}" >> $GITHUB_OUTPUT
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ghcr.io/a1icja/checkhen
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: ./checkhen
+          file: ./checkhen/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ steps.lower-repo.outputs.repository }}:${{ github.event.inputs.tag }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ github.event.inputs.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_EMAIL_DOMAIN=${{ github.event.inputs.NEXT_PUBLIC_EMAIL_DOMAIN }}
+            NEXT_PUBLIC_ADMIN_EMAILS=${{ github.event.inputs.NEXT_PUBLIC_ADMIN_EMAILS }}

@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Class {
+  id         String      @id @default(uuid())
+  checkIns   CheckIn[]
+  handRaises HandRaise[]
+  chatMessages ChatMessage[]
+  name       String
+  duration   Int
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime?   @updatedAt
+}
+
+model CheckIn {
+  id        String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  class     Class     @relation(fields: [classId], references: [id])
+  classId   String
+  socketId  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+}
+
+model HandRaise {
+  id             String    @id @default(uuid())
+  user           User      @relation(fields: [userId], references: [id])
+  userId         String
+  class          Class     @relation(fields: [classId], references: [id])
+  classId        String
+  isAcknowledged Boolean   @default(false)
+  isRated        Boolean   @default(false)
+  hasValue       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime? @updatedAt
+}
+
+model User {
+  id         String      @id @default(uuid())
+  clerk_id   String      @unique
+  email      String      @unique
+  isAdmin    Boolean     @default(false)
+  checkIns   CheckIn[]
+  handRaises HandRaise[]
+  chatMessages ChatMessage[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime?   @updatedAt
+}
+
+model ChatMessage {
+  id        String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  class     Class     @relation(fields: [classId], references: [id])
+  classId   String
+  message   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+}
