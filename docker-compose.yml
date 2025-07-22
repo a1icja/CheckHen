@@ -1,6 +1,9 @@
 services:
   490-test:
-    image: ghcr.io/a1icja/checkhen:main
+    # image: ghcr.io/a1icja/checkhen:main
+    build:
+      context: ./checkhen/
+      dockerfile: Dockerfile
     container_name: 490-test
     ports:
       - "3000:3000"
@@ -29,7 +32,10 @@ services:
       POSTGRES_PASSWORD: <FILL_ME_IN>
       POSTGRES_DB: <FILL_ME_IN>
   socket:
-    image: ghcr.io/a1icja/socket-server:main
+    # image: ghcr.io/a1icja/socket-server:main
+    build:
+      context: ./socket-server/
+      dockerfile: Dockerfile
     container_name: 490-socket
     ports:
       - "6060:6060"
@@ -42,22 +48,22 @@ services:
           path: ./socket-server/
     depends_on:
       - db
-  grafana:
-    image: grafana/grafana-oss:latest
-    container_name: 490-grafana
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./grafana/provisioning/dashboards/:/etc/grafana/provisioning/dashboards/
-      - ./grafana/provisioning/datasources/:/etc/grafana/provisioning/datasources/
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
-    ports:
-      - "3001:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=<FILL_ME_IN>
-      - GF_SECURITY_ADMIN_USER=<FILL_ME_IN>
-      - GF_USERS_ALLOW_SIGN_UP=<FILL_ME_IN>
-    depends_on:
-      - db
+  # grafana:
+  #   image: grafana/grafana-oss:latest
+  #   container_name: 490-grafana
+  #   volumes:
+  #     - grafana-data:/var/lib/grafana
+  #     - ./grafana/provisioning/dashboards/:/etc/grafana/provisioning/dashboards/
+  #     - ./grafana/provisioning/datasources/:/etc/grafana/provisioning/datasources/
+  #     - ./grafana/dashboards:/var/lib/grafana/dashboards
+  #   ports:
+  #     - "3001:3000"
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=<FILL_ME_IN>
+  #     - GF_SECURITY_ADMIN_USER=<FILL_ME_IN>
+  #     - GF_USERS_ALLOW_SIGN_UP=<FILL_ME_IN>
+  #   depends_on:
+  #     - db
 volumes:
   pgdata:
   grafana-data:
