@@ -15,6 +15,16 @@ on:
       tag:
         description: "Image version tag"
         required: true
+      amd64:
+        description: "Build for linux/amd64"
+        type: boolean
+        required: false
+        default: true
+      arm64:
+        description: "Build for linux/arm64"
+        type: boolean
+        required: false
+        default: false
 
 env:
   REGISTRY: ghcr.io
@@ -55,8 +65,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push Docker image
-        id: push
+      - name: Build and push Docker image - AMD64
+        if: ${{ github.event.inputs.amd64}}
+        id: push-amd64
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
           context: ./checkhen
@@ -64,7 +75,22 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ steps.lower-repo.outputs.repository }}:${{ github.event.inputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
+          build-args: |
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ github.event.inputs.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_EMAIL_DOMAIN=${{ github.event.inputs.NEXT_PUBLIC_EMAIL_DOMAIN }}
+            NEXT_PUBLIC_ADMIN_EMAILS=${{ github.event.inputs.NEXT_PUBLIC_ADMIN_EMAILS }}
+      - name: Build and push Docker image - ARM64
+        if: ${{ github.event.inputs.arm64}}
+        id: push-arm64
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: ./checkhen
+          file: ./checkhen/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ steps.lower-repo.outputs.repository }}:${{ github.event.inputs.tag }}-arm64
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/arm64
           build-args: |
             NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ github.event.inputs.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
             NEXT_PUBLIC_EMAIL_DOMAIN=${{ github.event.inputs.NEXT_PUBLIC_EMAIL_DOMAIN }}
