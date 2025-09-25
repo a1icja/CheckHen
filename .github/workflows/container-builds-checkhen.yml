@@ -66,7 +66,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push Docker image - AMD64
-        if: ${{ github.event.inputs.amd64}}
+        if: ${{ github.event.inputs.amd64 == 'true' }}
         id: push-amd64
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
@@ -81,7 +81,7 @@ jobs:
             NEXT_PUBLIC_EMAIL_DOMAIN=${{ github.event.inputs.NEXT_PUBLIC_EMAIL_DOMAIN }}
             NEXT_PUBLIC_ADMIN_EMAILS=${{ github.event.inputs.NEXT_PUBLIC_ADMIN_EMAILS }}
       - name: Build and push Docker image - ARM64
-        if: ${{ github.event.inputs.arm64}}
+        if: ${{ github.event.inputs.arm64 == 'true'}}
         id: push-arm64
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
