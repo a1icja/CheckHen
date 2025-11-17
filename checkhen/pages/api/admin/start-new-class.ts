@@ -1,6 +1,5 @@
-import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import type { NextApiRequest, NextApiResponse } from 'next'
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 type ResponseData = {
   message: string

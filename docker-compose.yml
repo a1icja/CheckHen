@@ -1,6 +1,8 @@
 services:
   490-test:
+    #do this 
     # image: ghcr.io/a1icja/checkhen:main
+    # OR
     build:
       context: ./checkhen/
       dockerfile: Dockerfile
@@ -9,10 +11,10 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
-      - DATABASE_URL=postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@db:5432/<POSTGRES_DB>
-      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<FILL_ME_IN>
-      - CLERK_SECRET_KEY=<FILL_ME_IN>
-      - NTFY_TOPIC=<FILL_ME_IN>
+      - DATABASE_URL=postgres://ds490:ds490-secure-password@db:5432/postgres
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Zmlyc3QtbWFzdG9kb24tODMuY2xlcmsuYWNjb3VudHMuZGV2JA
+      - CLERK_SECRET_KEY=sk_test_TcZPHqalrJHYkJEujzskija8NLh3IpX3bvo9zWoiHR
+      - NTFY_TOPIC=checkhen-ds490
     develop:
       watch:
         - action: rebuild
@@ -28,9 +30,9 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: <FILL_ME_IN>
-      POSTGRES_PASSWORD: <FILL_ME_IN>
-      POSTGRES_DB: <FILL_ME_IN>
+      POSTGRES_USER: ds490
+      POSTGRES_PASSWORD: ds490-secure-password
+      POSTGRES_DB: postgres
   socket:
     # image: ghcr.io/a1icja/socket-server:main
     build:
@@ -41,7 +43,7 @@ services:
       - "6060:6060"
     environment:
       - PORT=6060
-      - DATABASE_URL=postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@db:5432/<POSTGRES_DB>
+      - DATABASE_URL=postgres://<POSTGRES_USER>:<ds490-secure-password@db:5432/<POSTGRES_DB>
     develop:
       watch:
         - action: rebuild

@@ -1,6 +1,7 @@
-import { clerkClient, getAuth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
+import { prisma } from '@/lib/prisma';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 // Define the structure of the response data
 type ResponseData = {
@@ -15,32 +16,25 @@ export default async function handler(
   res: NextApiResponse<ResponseData>
 ) {
   // Allow only POST requests
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method Not Allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  // Authenticate the user
-  const { userId } = getAuth(req);
-  if (!userId) {
-    return res.status(401).json({ message: "Unauthorized" });
+  // Get authenticated session
+  const session = await getServerSession(req, res, authOptions);
+  if (!session?.user?.email) {
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  // Fetch user details from Clerk
-  const client = await clerkClient();
-  const user = await client.users.getUser(userId);
+  const email = session.user.email;
 
-  // Check if the user exists and has a primary email address
-  if (!user || !user.primaryEmailAddress) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  // Upsert the user in the database
+  // Upsert the user in the database using email
   const dbUser = await prisma.user.upsert({
-    where: { email: user.primaryEmailAddress.emailAddress },
+    where: { email },
     update: {},
     create: {
-      clerk_id: user.id,
-      email: user.primaryEmailAddress.emailAddress,
+      email,
+      isAdmin: false,
     },
   });
 

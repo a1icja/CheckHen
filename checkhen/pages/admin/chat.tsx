@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { User } from '@clerk/nextjs/server';
 import { Socket } from 'socket.io-client';
 import { Chat } from '@/components/Chat/Chat';
 import { getSocket } from '@/lib/socket';
 
+type UserInfo = {
+  id: string;
+  emailAddresses: Array<{ emailAddress: string }>;
+};
+
 export default function StudentChatPage() {
   const ws = useRef<Socket | null>(null); // WebSocket reference
 
-  const [user, setUser] = useState<User>(); // State to store the current user
+  const [user, setUser] = useState<UserInfo>(); // State to store the current user
   const [currentClassId, setCurrentClassId] = useState(null); // State to store the current class ID
   const [messages, setMessages] = useState<Array<any>>([]); // State to store chat messages
 

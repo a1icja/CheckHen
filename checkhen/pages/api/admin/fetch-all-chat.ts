@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { clerkClient, getAuth } from '@clerk/nextjs/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
 
 type ResponseData = {
@@ -12,16 +13,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  // Authenticate the user using Clerk
-  const { userId } = getAuth(req);
-  if (!userId) {
+  // Get authenticated session
+  const session = await getServerSession(req, res, authOptions);
+  if (!session?.user?.email) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  // Find the user in the database
+  // Find the user in the database by email
   const dbCheckInUser = await prisma.user.findFirst({
     where: {
-      clerk_id: userId,
+      email: session.user.email,
     },
   });
   if (!dbCheckInUser) {
@@ -64,29 +65,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     },
   });
 
-  // Fetch user details from Clerk
-  const client = await clerkClient();
-  const clerkUsers = await client.users.getUserList({
-    userId: users.map((user) => user.clerk_id),
-  });
-
-  // Map database user IDs to Clerk user IDs
-  const dbToClerkMap = new Map<string, string>();
+  // Map database user IDs to emails and usernames
+  const dbToEmailMap = new Map<string, string>();
+  const dbToUsernameMap = new Map<string, string>();
   for (const user of users) {
-    const clerkUser = clerkUsers.data.find((clerkUser) => clerkUser.id === user.clerk_id);
-    if (clerkUser) {
-      dbToClerkMap.set(user.id, clerkUser.id);
-    }
+    dbToEmailMap.set(user.id, user.email);
+    dbToUsernameMap.set(user.id, user.email.split('@')[0]); // Extract username
   }
 
   // Construct the response messages with user details
   const messages = dbMessages.map((m) => ({
     id: m.id,
     message: m.message,
-    clerkId: dbToClerkMap.get(m.userId) || '',
-    userName:
-      clerkUsers.data.find((clerkUser) => clerkUser.id === dbToClerkMap.get(m.userId))?.firstName ||
-      'Unknown',
+    clerkId: dbToEmailMap.get(m.userId) || '', // Keep field name for backward compatibility
+    userName: dbToUsernameMap.get(m.userId) || 'Unknown',
   }));
 
   // Respond with the chat messages

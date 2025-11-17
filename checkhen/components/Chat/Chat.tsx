@@ -7,7 +7,6 @@ import {
   MessageInput,
   MessageList,
 } from '@chatscope/chat-ui-kit-react';
-import { currentUser } from '@clerk/nextjs/server';
 
 export function Chat({
   enableInput = true,

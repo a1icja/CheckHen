@@ -1,41 +1,36 @@
-import { clerkClient, getAuth } from '@clerk/nextjs/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
-import type { NextApiRequest, NextApiResponse } from 'next'
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 type ResponseData = {
-  message: string
-}
+  message: string;
+};
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ResponseData>
 ) {
   // Ensure the request method is POST
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method Not Allowed" });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  // Authenticate the user using Clerk
-  const { userId } = getAuth(req);
-  if (!userId) {
-    return res.status(401).json({ message: "Unauthorized" });
+  // Get authenticated session
+  const session = await getServerSession(req, res, authOptions);
+  if (!session?.user?.email) {
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  const client = await clerkClient();
+  const email = session.user.email;
 
-  // Fetch user details from Clerk
-  const user = await client.users.getUser(userId);
-  if (!user || !user.primaryEmailAddress) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  // Upsert the user in the database
+  // Upsert the user in the database using email
   const dbUser = await prisma.user.upsert({
-    where: { email: user.primaryEmailAddress.emailAddress },
+    where: { email },
     update: {},
     create: {
-      clerk_id: user.id,
-      email: user.primaryEmailAddress.emailAddress,
+      email,
+      isAdmin: false,
     },
   });
 
@@ -61,7 +56,7 @@ export default async function handler(
   });
 
   if (dbCheckIn) {
-    return res.status(200).json({ message: `Already checked in: ${user.primaryEmailAddress.emailAddress}` });
+    return res.status(200).json({ message: `Already checked in: ${email}` });
   }
 
   // Create a new check-in record for the user
@@ -73,5 +68,5 @@ export default async function handler(
   });
 
   // Respond with a success message
-  res.status(200).json({ message: `Checked in: ${user.primaryEmailAddress.emailAddress}` });
+  res.status(200).json({ message: `Checked in: ${email}` });
 }

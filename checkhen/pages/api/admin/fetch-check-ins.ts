@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
 type ResponseData = {
@@ -57,21 +56,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   const resObject = [];
 
-  // Fetch user details from Clerk
-  const client = await clerkClient();
-
-  const clerkUsers = await client.users.getUserList({
-    userId: dbCheckInUsers.map((checkIn) => checkIn.user.clerk_id),
-    limit: dbCheckInUsers.length,
-  });
-
   // Construct the response object with user details and hand raise counts
   for (const checkIn of dbCheckInUsers) {
-    const clerkUser = clerkUsers.data.find((user) => user.id === checkIn.user.clerk_id);
-    if (!clerkUser) continue;
+    const user = checkIn.user;
+    const username = user.email.split('@')[0]; // Extract username from email
     resObject.push({
-      email: clerkUser.primaryEmailAddress?.emailAddress,
-      name: clerkUser.fullName,
+      email: user.email,
+      name: username,
       handRaiseCount: handRaiseCounts[checkIn.userId] || 0,
     });
   }

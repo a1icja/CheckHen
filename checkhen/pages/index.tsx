@@ -1,25 +1,68 @@
 import { useEffect, useRef, useState } from 'react';
-import { User } from '@clerk/nextjs/server';
+import { useSession, signIn } from 'next-auth/react';
+import { useRouter } from 'next/router';
 import { Socket } from 'socket.io-client';
 import { Button } from '@mantine/core';
 import { getSocket } from '@/lib/socket';
 import { Chat } from '@/components/Chat/Chat';
 
+type UserInfo = {
+  id: string;
+  emailAddresses: Array<{ emailAddress: string }>;
+};
+
 export default function HomePage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const ws = useRef<Socket | null>(null);
 
-  // State variables for user, hand raise status, current class, and chat messages
-  const [user, setUser] = useState<User>();
+  // State variables for user, hand raise status, current class, chat messages, and check-in status
+  const [user, setUser] = useState<UserInfo>();
   const [handRaised, setHandRaised] = useState(false);
   const [currentClassId, setCurrentClassId] = useState(null);
   const [currentClassName, setCurrentClassName] = useState('');
   const [messages, setMessages] = useState<Array<any>>([]);
+  const [isCheckedIn, setIsCheckedIn] = useState(false);
+
+  // Check if user is admin and redirect
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.email) {
+      const email = session.user.email;
+      const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(
+        (e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`
+      ) || [];
+
+      if (adminEmails.includes(email)) {
+        router.push('/admin/dashboard');
+      }
+    }
+  }, [status, session, router]);
 
   // Fetches the current user's information from the backend
   const fetchUser = async () => {
     const response = await fetch('/api/get-clerk-info');
     const data = await response.json();
     setUser(data.user);
+  };
+
+  // Check if user is checked in to the current class
+  const checkIfCheckedIn = async () => {
+    const response = await fetch('/api/student/fetch-check-in');
+    setIsCheckedIn(response.ok);
+    return response.ok;
+  };
+
+  // Handle check-in
+  const handleCheckIn = async () => {
+    const response = await fetch('/api/student/check-in', {
+      method: 'POST',
+    });
+
+    if (response.ok) {
+      setIsCheckedIn(true);
+      fetchHandRaiseStatus();
+      fetchAllChatMessages();
+    }
   };
 
   // Fetches the current hand raise status for the user
@@ -114,18 +157,24 @@ export default function HomePage() {
     });
   };
 
-  // Initial setup: fetch user, class, hand raise status, and chat messages
+  // Initial setup: fetch user, class, and check if checked in
   useEffect(() => {
-    fetchUser();
-    fetchCurrentClass();
-    fetchHandRaiseStatus();
-    fetchAllChatMessages();
-
-    // Periodically refresh the current class details
-    const _interval = setInterval(() => {
+    if (status === 'authenticated') {
+      fetchUser();
       fetchCurrentClass();
-    }, 5000);
-  }, []);
+      checkIfCheckedIn().then((checkedIn) => {
+        if (checkedIn) {
+          fetchHandRaiseStatus();
+          fetchAllChatMessages();
+        }
+      });
+
+      // Periodically refresh the current class details
+      const _interval = setInterval(() => {
+        fetchCurrentClass();
+      }, 5000);
+    }
+  }, [status]);
 
   // Set up WebSocket connection when user and class ID are available
   useEffect(() => {
@@ -146,6 +195,52 @@ export default function HomePage() {
       fetchLastChatMessage();
     });
   }, [user, currentClassId]);
+
+  // Show sign-in prompt if not authenticated
+  if (status === 'unauthenticated') {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <h1 className="text-2xl font-bold">Welcome to CheckHen</h1>
+        <p className="text-gray-600">Please sign in with your BU account</p>
+        <Button onClick={() => signIn('google')} size="lg">
+          Sign In with Google
+        </Button>
+      </div>
+    );
+  }
+
+  // Show loading while checking auth
+  if (status === 'loading') {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
+
+  // Show check-in UI if authenticated but not checked in
+  if (!isCheckedIn && status === 'authenticated') {
+    return (
+      <>
+        <div className="flex flex-col items-center justify-center h-screen gap-4">
+          {currentClassName ? (
+            <>
+              <h1 className="text-2xl font-bold">Welcome to CheckHen</h1>
+              <div className="text-center">
+                <p className="mb-2">Current Class Session:</p>
+                <p className="text-lg font-semibold">{currentClassName}</p>
+              </div>
+              <Button onClick={handleCheckIn} size="lg">
+                Check In to Class
+              </Button>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold">Welcome to CheckHen</h1>
+              <p className="text-gray-600">No active class session available</p>
+              <p className="text-sm text-gray-500">Please wait for your instructor to start a class</p>
+            </>
+          )}
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -172,7 +267,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="h-[calc(100vh-5rem)] overflow-hidden">
-          <Chat 
+          <Chat
             messages={messages}
             currentClerkId={user?.id}
             sendHandler={sendChatMessage}

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { clerkClient, getAuth } from '@clerk/nextjs/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
 
 // Define the structure of the response data
@@ -14,16 +15,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  // Authenticate the user
-  const { userId } = getAuth(req);
-  if (!userId) {
+  // Get authenticated session
+  const session = await getServerSession(req, res, authOptions);
+  if (!session?.user?.email) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  // Find the user in the database
+  // Find the user in the database by email
   const dbCheckInUser = await prisma.user.findFirst({
     where: {
-      clerk_id: userId,
+      email: session.user.email,
     },
   });
   if (!dbCheckInUser) {
@@ -71,26 +72,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     },
   });
 
-  // Fetch Clerk user details
-  const client = await clerkClient();
-  const clerkUsers = await client.users.getUserList({
-    userId: users.map((user) => user.clerk_id),
-  });
-
-  // Map database user IDs to Clerk user IDs
-  const dbToClerkMap = new Map<string, string>();
+  // Map database user IDs to emails
+  const dbToEmailMap = new Map<string, string>();
   for (const user of users) {
-    const clerkUser = clerkUsers.data.find((clerkUser) => clerkUser.id === user.clerk_id);
-    if (clerkUser) {
-      dbToClerkMap.set(user.id, clerkUser.id);
-    }
+    dbToEmailMap.set(user.id, user.email);
   }
 
-  // Format the messages with Clerk user details
+  // Format the messages with email as identifier
   const messages = dbMessages.map((m) => ({
     id: m.id,
     message: m.message,
-    clerkId: dbToClerkMap.get(m.userId) || '',
+    clerkId: dbToEmailMap.get(m.userId) || '', // Keep field name for backward compatibility
   }));
 
   // Respond with the formatted messages

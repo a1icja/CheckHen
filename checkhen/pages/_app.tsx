@@ -1,16 +1,16 @@
-import '@mantine/core/styles.css';
 import '../public/index.css';
+import '@mantine/core/styles.css';
 
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
-import { ClerkProvider } from '@clerk/nextjs';
+import { SessionProvider } from 'next-auth/react';
 import { MantineProvider } from '@mantine/core';
 import { theme } from '../theme';
 import AuthIcon from '@/components/AuthIcon/AuthIcon';
 
-export default function App({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
-    <ClerkProvider {...pageProps}>
+    <SessionProvider session={session}>
       <MantineProvider theme={theme}>
         <Head>
           <title>Mantine Template</title>
@@ -23,6 +23,6 @@ export default function App({ Component, pageProps }: AppProps) {
         <AuthIcon />
         <Component {...pageProps} />
       </MantineProvider>
-    </ClerkProvider>
+    </SessionProvider>
   );
 }

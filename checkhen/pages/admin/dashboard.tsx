@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { User } from '@clerk/nextjs/server';
 import { Button } from '@mantine/core';
 import ClassSessionManager from '@/components/Admin/ClassSessionManager/ClassSessionManager';
 import { TableScrollArea } from '@/components/TableScrollArea/TableScrollArea';
@@ -7,16 +6,21 @@ import { SimpleUser } from '@/types';
 import { getSocket } from '@/lib/socket';
 import { Socket } from 'socket.io-client';
 
+type UserInfo = {
+  id: string;
+  emailAddresses: Array<{ emailAddress: string }>;
+};
+
 export default function Dashboard() {
   const ws = useRef<Socket | null>(null);
 
   // State variables for user, current class, checked-in users, and raised hands
-  const [user, setUser] = useState<User>();
+  const [user, setUser] = useState<UserInfo>();
   const [currentClassId, setCurrentClassId] = useState<string>('');
   const [currentClass, setCurrentClass] = useState<string>('');
   const [checkedInUsers, setCheckedInUsers] = useState<Record<string, any>[]>([]);
   const [raisedHands, setRaisedHands] = useState<Record<string, any>[]>([]);
-  
+
   // Fetches the current user's information from the backend
   const fetchUser = async () => {
     const response = await fetch('/api/get-clerk-info');
