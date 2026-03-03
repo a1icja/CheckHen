@@ -56,14 +56,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   const resObject = [];
 
-  // Construct the response object with user details and hand raise counts
+  // Construct the response object with user details, anonymous names, and hand raise counts
   for (const checkIn of dbCheckInUsers) {
     const user = checkIn.user;
     const username = user.email.split('@')[0]; // Extract username from email
     resObject.push({
+      id: checkIn.id,
       email: user.email,
       name: username,
+      anonymousName: checkIn.anonymousName,
+      joinTime: checkIn.createdAt,
       handRaiseCount: handRaiseCounts[checkIn.userId] || 0,
+      user: {
+        email: user.email,
+      },
     });
   }
 

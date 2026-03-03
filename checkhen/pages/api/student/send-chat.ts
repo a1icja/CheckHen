@@ -50,14 +50,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const classEnd = new Date(dbCurrentClass.createdAt.getTime() + dbCurrentClass.duration * 60000);
   if (classEnd < new Date()) return res.status(500).json({ message: 'No class found' });
 
-  if (!dbCurrentClass.checkIns.some((checkIn) => checkIn.userId === dbCheckInUser.id)) {
+  // Find user's check-in to get their anonymous name
+  const userCheckIn = dbCurrentClass.checkIns.find((checkIn) => checkIn.userId === dbCheckInUser.id);
+
+  if (!userCheckIn) {
     return res.status(500).json({ message: 'No check in found' });
   }
 
-  // Create a new chat message in the database
+  // Create a new chat message in the database with anonymous name
   const newMessage = await prisma.chatMessage.create({
     data: {
       message,
+      anonymousName: userCheckIn.anonymousName,
       user: {
         connect: {
           id: dbCheckInUser.id,

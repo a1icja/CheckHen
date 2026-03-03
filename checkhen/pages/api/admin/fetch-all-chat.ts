@@ -73,12 +73,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     dbToUsernameMap.set(user.id, user.email.split('@')[0]); // Extract username
   }
 
-  // Construct the response messages with user details
+  // Construct the response messages with user details and anonymous names
   const messages = dbMessages.map((m) => ({
     id: m.id,
     message: m.message,
+    anonymousName: m.anonymousName,
+    createdAt: m.createdAt,
     clerkId: dbToEmailMap.get(m.userId) || '', // Keep field name for backward compatibility
     userName: dbToUsernameMap.get(m.userId) || 'Unknown',
+    user: {
+      email: dbToEmailMap.get(m.userId) || '',
+    },
   }));
 
   // Respond with the chat messages

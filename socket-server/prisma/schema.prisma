@@ -12,25 +12,27 @@ datasource db {
 }
 
 model Class {
-  id         String      @id @default(uuid())
-  checkIns   CheckIn[]
-  handRaises HandRaise[]
+  id           String        @id @default(uuid())
+  checkIns     CheckIn[]
+  handRaises   HandRaise[]
   chatMessages ChatMessage[]
-  name       String
-  duration   Int
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime?   @updatedAt
+  paceSignals  PaceSignal[]
+  name         String
+  duration     Int
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime?     @updatedAt
 }
 
 model CheckIn {
-  id        String    @id @default(uuid())
-  user      User      @relation(fields: [userId], references: [id])
-  userId    String
-  class     Class     @relation(fields: [classId], references: [id])
-  classId   String
-  socketId  String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
+  id            String    @id @default(uuid())
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String
+  class         Class     @relation(fields: [classId], references: [id])
+  classId       String
+  socketId      String?
+  anonymousName String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime? @updatedAt
 }
 
 model HandRaise {
@@ -47,24 +49,38 @@ model HandRaise {
 }
 
 model User {
-  id         String      @id @default(uuid())
-  clerk_id   String      @unique
-  email      String      @unique
-  isAdmin    Boolean     @default(false)
-  checkIns   CheckIn[]
-  handRaises HandRaise[]
+  id           String        @id @default(uuid())
+  clerk_id     String?       @unique
+  email        String        @unique
+  isAdmin      Boolean       @default(false)
+  checkIns     CheckIn[]
+  handRaises   HandRaise[]
   chatMessages ChatMessage[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime?   @updatedAt
+  paceSignals  PaceSignal[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime?     @updatedAt
 }
 
 model ChatMessage {
-  id        String    @id @default(uuid())
-  user      User      @relation(fields: [userId], references: [id])
-  userId    String
-  class     Class     @relation(fields: [classId], references: [id])
-  classId   String
-  message   String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
+  id            String    @id @default(uuid())
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String
+  class         Class     @relation(fields: [classId], references: [id])
+  classId       String
+  message       String
+  anonymousName String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime? @updatedAt
+}
+
+model PaceSignal {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  class      Class    @relation(fields: [classId], references: [id])
+  classId    String
+  signalType String
+  createdAt  DateTime @default(now())
+
+  @@index([classId, signalType])
 }

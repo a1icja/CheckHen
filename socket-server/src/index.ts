@@ -118,5 +118,18 @@ io.on("connection", async (socket) => {
     if (event === "chat-message-sent") {
       io.sockets.emit("fetch-messages", args[0]);
     }
+
+    // Pace signal events
+    if (event === "pace-signal-sent") {
+      // Broadcast to all clients that a new pace signal was sent
+      // args[0] should contain { classId, signalType }
+      io.sockets.emit("pace-signal-update", args[0]);
+    }
+
+    if (event === "pace-signals-reset") {
+      // Broadcast to all clients that pace signals were reset
+      // args[0] should contain { classId }
+      io.sockets.emit("pace-signals-reset", args[0]);
+    }
   });
 });

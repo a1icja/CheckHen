@@ -43,7 +43,7 @@ services:
       - "6060:6060"
     environment:
       - PORT=6060
-      - DATABASE_URL=postgres://<POSTGRES_USER>:<ds490-secure-password@db:5432/<POSTGRES_DB>
+      - DATABASE_URL=postgres://ds490:ds490-secure-password@db:5432/postgres
     develop:
       watch:
         - action: rebuild

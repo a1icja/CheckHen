@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
+import { generateUniqueAnonymousName } from '@/lib/anonymousNames';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 type ResponseData = {
@@ -59,11 +60,29 @@ export default async function handler(
     return res.status(200).json({ message: `Already checked in: ${email}` });
   }
 
-  // Create a new check-in record for the user
+  // Get existing anonymous names for this class to ensure uniqueness
+  const existingCheckIns = await prisma.checkIn.findMany({
+    where: {
+      classId: currentClass.id,
+    },
+    select: {
+      anonymousName: true,
+    },
+  });
+
+  const existingNames = existingCheckIns
+    .map((c) => c.anonymousName)
+    .filter((name): name is string => name !== null);
+
+  // Generate a unique anonymous name
+  const anonymousName = generateUniqueAnonymousName(existingNames);
+
+  // Create a new check-in record for the user with anonymous name
   await prisma.checkIn.create({
     data: {
       userId: dbUser.id,
       classId: currentClass.id,
+      anonymousName,
     },
   });
 
