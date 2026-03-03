@@ -52,17 +52,7 @@ All API routes now use Auth.js:
 ## Current Project Structure
 
 ### Environment Variables (.env)
-```
-DATABASE_URL=postgresql://ds490:ds490-secure-password@127.0.0.1:5432/postgres
-NEXT_PUBLIC_EMAIL_DOMAIN=bu.edu
-NEXT_PUBLIC_ADMIN_EMAILS=alicja,langd0n,aploog
-
-AUTH_SECRET="your-auth-secret-here"
-NEXTAUTH_SECRET="your-auth-secret-here"
-AUTH_GOOGLE_ID="your-google-client-id.apps.googleusercontent.com"
-AUTH_GOOGLE_SECRET="your-google-client-secret"
-NEXTAUTH_URL=http://localhost:3000
-```
+See `checkhen/.env.example` for the required environment variables. Copy it to `checkhen/.env` and fill in your secrets.
 
 ### Key Files
 
