@@ -71,10 +71,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   if (!user) return res.status(500).json({ message: 'No users found' });
 
-  // Format the message response using email as identifier
+  // Format the message response for the student view
   const message = {
     id: dbMessage.id,
     message: dbMessage.message,
+    anonymousName: dbMessage.anonymousName,
+    createdAt: dbMessage.createdAt,
+    userId: dbMessage.userId,
   };
 
   // Respond with the last message

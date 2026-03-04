@@ -1486,32 +1486,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chatscope/chat-ui-kit-react@npm:2.0.3":
-  version: 2.0.3
-  resolution: "@chatscope/chat-ui-kit-react@npm:2.0.3"
-  dependencies:
-    "@chatscope/chat-ui-kit-styles": "npm:^1.2.0"
-    "@fortawesome/fontawesome-free": "npm:^5.12.1"
-    "@fortawesome/fontawesome-svg-core": "npm:^1.2.26"
-    "@fortawesome/free-solid-svg-icons": "npm:^5.12.0"
-    "@fortawesome/react-fontawesome": "npm:^0.1.8"
-    classnames: "npm:^2.2.6"
-    prop-types: "npm:^15.7.2"
-  peerDependencies:
-    prop-types: ^15.7.2
-    react: ^16.12.0 || ^17.0.0 || ^18.2.0
-    react-dom: ^16.12.0 || ^17.0.0 || ^18.2.0
-  checksum: 10c0/27b3ad8126e49fa077ea7d1948af13782cb187f8046b2e430eef8a5f5d5850c681a290c86bcade2e0f223714e08a67d6faf8dfd4bf6a99366a53b7e8824befc0
-  languageName: node
-  linkType: hard
-
-"@chatscope/chat-ui-kit-styles@npm:1.4.0, @chatscope/chat-ui-kit-styles@npm:^1.2.0":
-  version: 1.4.0
-  resolution: "@chatscope/chat-ui-kit-styles@npm:1.4.0"
-  checksum: 10c0/86d06dfad67118661e89076b5ba26ea82cf5b070fc2b77927be0d809359dc06565db87bebfc2cd898bd08e623c2d1534c2f1326c0beb0e690dab19eb34a4e990
-  languageName: node
-  linkType: hard
-
 "@csstools/css-parser-algorithms@npm:^3.0.4":
   version: 3.0.5
   resolution: "@csstools/css-parser-algorithms@npm:3.0.5"
@@ -1928,50 +1902,6 @@ __metadata:
   version: 0.2.10
   resolution: "@floating-ui/utils@npm:0.2.10"
   checksum: 10c0/e9bc2a1730ede1ee25843937e911ab6e846a733a4488623cd353f94721b05ec2c9ec6437613a2ac9379a94c2fd40c797a2ba6fa1df2716f5ce4aa6ddb1cf9ea4
-  languageName: node
-  linkType: hard
-
-"@fortawesome/fontawesome-common-types@npm:^0.2.36":
-  version: 0.2.36
-  resolution: "@fortawesome/fontawesome-common-types@npm:0.2.36"
-  checksum: 10c0/4918ede75f22bf4623c645153d1385b16b58c638b8d500ba93d198382a1619742c77a3fd1348df8a6c157baf3486dc96710d6fe38e5eb006ea85ac39d294cb24
-  languageName: node
-  linkType: hard
-
-"@fortawesome/fontawesome-free@npm:^5.12.1":
-  version: 5.15.4
-  resolution: "@fortawesome/fontawesome-free@npm:5.15.4"
-  checksum: 10c0/0a12f11b17b3073475df965d423ac485715e281d11ecde17250fab5dc0a177fb29ced59242f6c024bef59429c502ba8fe831ed9500e14713cc30138e70df8fbc
-  languageName: node
-  linkType: hard
-
-"@fortawesome/fontawesome-svg-core@npm:^1.2.26":
-  version: 1.2.36
-  resolution: "@fortawesome/fontawesome-svg-core@npm:1.2.36"
-  dependencies:
-    "@fortawesome/fontawesome-common-types": "npm:^0.2.36"
-  checksum: 10c0/aaff16abc453d5ddf36035720ab9e600a5b22a6d37f8e0641104ecc505a10a7aae3b1ef3ec37992039d4fc00b322d0029b992c88b483f750794792f672b509f6
-  languageName: node
-  linkType: hard
-
-"@fortawesome/free-solid-svg-icons@npm:^5.12.0":
-  version: 5.15.4
-  resolution: "@fortawesome/free-solid-svg-icons@npm:5.15.4"
-  dependencies:
-    "@fortawesome/fontawesome-common-types": "npm:^0.2.36"
-  checksum: 10c0/746acdf9a443d149084a0a0fea684bc37cddf602a2fe04dda8911263e7e13d0105522337cc53a66e835e241d7d27a799e5a675ff16902a415520e14c7a5a1ca6
-  languageName: node
-  linkType: hard
-
-"@fortawesome/react-fontawesome@npm:^0.1.8":
-  version: 0.1.19
-  resolution: "@fortawesome/react-fontawesome@npm:0.1.19"
-  dependencies:
-    prop-types: "npm:^15.8.1"
-  peerDependencies:
-    "@fortawesome/fontawesome-svg-core": ~1 || ~6
-    react: ">=16.x"
-  checksum: 10c0/e0442e5f6bc4b7768f491504890192c1d78f1ee52587febaaefeedeba98f7c4906f81b4e10871bfb10eae3fafce3eecd27b5653312e846ce7373f0d5a81cf144
   languageName: node
   linkType: hard
 
@@ -4969,13 +4899,6 @@ __metadata:
   version: 1.4.3
   resolution: "cjs-module-lexer@npm:1.4.3"
   checksum: 10c0/076b3af85adc4d65dbdab1b5b240fe5b45d44fcf0ef9d429044dd94d19be5589376805c44fb2d4b3e684e5fe6a9b7cf3e426476a6507c45283c5fc6ff95240be
-  languageName: node
-  linkType: hard
-
-"classnames@npm:^2.2.6":
-  version: 2.5.1
-  resolution: "classnames@npm:2.5.1"
-  checksum: 10c0/afff4f77e62cea2d79c39962980bf316bacb0d7c49e13a21adaadb9221e1c6b9d3cdb829d8bb1b23c406f4e740507f37e1dcf506f7e3b7113d17c5bab787aa69
   languageName: node
   linkType: hard
 
@@ -8954,8 +8877,6 @@ __metadata:
   dependencies:
     "@babel/core": "npm:7.26.0"
     "@babel/runtime": "npm:^7.28.4"
-    "@chatscope/chat-ui-kit-react": "npm:2.0.3"
-    "@chatscope/chat-ui-kit-styles": "npm:1.4.0"
     "@eslint/js": "npm:9.18.0"
     "@ianvs/prettier-plugin-sort-imports": "npm:4.4.1"
     "@mantine/core": "npm:7.16.3"
@@ -10339,7 +10260,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prop-types@npm:^15.7.2, prop-types@npm:^15.8.1":
+"prop-types@npm:^15.8.1":
   version: 15.8.1
   resolution: "prop-types@npm:15.8.1"
   dependencies:

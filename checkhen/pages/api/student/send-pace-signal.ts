@@ -49,27 +49,14 @@ export default async function handler(
     return res.status(500).json({ message: 'No class found' });
   }
 
-  // Check if user already sent this signal for this class in the last 30 seconds
-  const thirtySecondsAgo = new Date(Date.now() - 30000);
-  const existingSignal = await prisma.paceSignal.findFirst({
+  // One vote per student — replace any existing signal with the new one
+  await prisma.paceSignal.deleteMany({
     where: {
       userId: dbUser.id,
       classId: currentClass.id,
-      signalType,
-      createdAt: {
-        gte: thirtySecondsAgo,
-      },
     },
   });
 
-  if (existingSignal) {
-    return res.status(200).json({
-      message: 'Signal already recorded recently',
-      signalType
-    });
-  }
-
-  // Create pace signal
   await prisma.paceSignal.create({
     data: {
       userId: dbUser.id,

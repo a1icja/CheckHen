@@ -280,7 +280,7 @@ export default function AdminDashboard() {
           <Button
             variant="outline"
             leftSection={<ArrowLeft size={16} />}
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/?preview=true')}
           >
             Student View
           </Button>

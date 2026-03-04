@@ -66,7 +66,7 @@ export default function HomePage() {
     scrollToBottom();
   }, [messages]);
 
-  // Check if user is admin and redirect
+  // Check if user is admin and redirect (skip if ?preview=true for testing student view)
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.email) {
       const email = session.user.email;
@@ -74,7 +74,7 @@ export default function HomePage() {
         (e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`
       ) || [];
 
-      if (adminEmails.includes(email)) {
+      if (adminEmails.includes(email) && router.query.preview !== 'true') {
         router.push('/admin/dashboard');
       }
     }

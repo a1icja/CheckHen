@@ -78,10 +78,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     dbToEmailMap.set(user.id, user.email);
   }
 
-  // Format the messages with email as identifier
+  // Format the messages for the student view
   const messages = dbMessages.map((m) => ({
     id: m.id,
     message: m.message,
+    anonymousName: m.anonymousName,
+    createdAt: m.createdAt,
+    userId: m.userId,
   }));
 
   // Respond with the formatted messages
