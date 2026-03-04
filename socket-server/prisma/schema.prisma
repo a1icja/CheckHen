@@ -50,7 +50,6 @@ model HandRaise {
 
 model User {
   id           String        @id @default(uuid())
-  clerk_id     String?       @unique
   email        String        @unique
   isAdmin      Boolean       @default(false)
   checkIns     CheckIn[]

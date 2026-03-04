@@ -82,7 +82,7 @@ export default function HomePage() {
 
   // Fetches the current user's information from the backend
   const fetchUser = async () => {
-    const response = await fetch('/api/get-clerk-info');
+    const response = await fetch('/api/get-user-info');
     const data = await response.json();
     setUser(data.user);
   };
@@ -270,11 +270,10 @@ export default function HomePage() {
   useEffect(() => {
     if (!user || !currentClassId) return;
 
-    const userId = user.id;
     const classId = currentClassId;
     const email = user.emailAddresses[0]?.emailAddress || '';
 
-    ws.current = getSocket(userId, classId, email);
+    ws.current = getSocket(classId, email);
 
     // Listen for updates
     ws.current?.on('check-raised-hands', () => {

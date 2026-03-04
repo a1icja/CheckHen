@@ -19,6 +19,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
+  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',')
+    .map((e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`) || [];
+  if (!adminEmails.includes(session.user.email)) return res.status(403).json({ message: 'Forbidden: Admin only' });
+
   // Find the user in the database by email
   const dbCheckInUser = await prisma.user.findFirst({
     where: {
@@ -79,7 +83,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     message: m.message,
     anonymousName: m.anonymousName,
     createdAt: m.createdAt,
-    clerkId: dbToEmailMap.get(m.userId) || '', // Keep field name for backward compatibility
     userName: dbToUsernameMap.get(m.userId) || 'Unknown',
     user: {
       email: dbToEmailMap.get(m.userId) || '',

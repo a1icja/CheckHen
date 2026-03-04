@@ -82,7 +82,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const messages = dbMessages.map((m) => ({
     id: m.id,
     message: m.message,
-    clerkId: dbToEmailMap.get(m.userId) || '', // Keep field name for backward compatibility
   }));
 
   // Respond with the formatted messages

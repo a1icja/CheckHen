@@ -17,7 +17,6 @@ const handleSocketConnection = async (socket: Socket) => {
 
   // Validate required query parameters
   if (
-    !socket.handshake.query.clerkId ||
     !socket.handshake.query.classId ||
     !socket.handshake.query.email
   ) {
@@ -26,10 +25,6 @@ const handleSocketConnection = async (socket: Socket) => {
   }
 
   // Extract query parameters, handling cases where they might be arrays
-  const clerkId = Array.isArray(socket.handshake.query.clerkId)
-    ? socket.handshake.query.clerkId[0]
-    : socket.handshake.query.clerkId;
-
   const classId = Array.isArray(socket.handshake.query.classId)
     ? socket.handshake.query.classId[0]
     : socket.handshake.query.classId;
@@ -38,7 +33,7 @@ const handleSocketConnection = async (socket: Socket) => {
     ? socket.handshake.query.email[0]
     : socket.handshake.query.email;
 
-  console.log(clerkId, classId, email); // Log extracted parameters
+  console.log(classId, email); // Log extracted parameters
 
   // Upsert user in the database (create if not exists, otherwise update)
   await prisma.user.upsert({
@@ -47,7 +42,6 @@ const handleSocketConnection = async (socket: Socket) => {
     },
     update: {}, // No updates for existing users
     create: {
-      clerk_id: clerkId,
       email: email,
     },
   });
@@ -56,7 +50,7 @@ const handleSocketConnection = async (socket: Socket) => {
   let dbCheckIn = await prisma.checkIn.findFirst({
     where: {
       user: {
-        clerk_id: clerkId,
+        email: email,
       },
       class: {
         id: classId,
@@ -69,7 +63,7 @@ const handleSocketConnection = async (socket: Socket) => {
       data: {
         user: {
           connect: {
-            clerk_id: clerkId,
+            email: email,
           },
         },
         class: {

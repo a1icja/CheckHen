@@ -90,7 +90,7 @@ export default function AdminDashboard() {
 
   // Fetch user info
   const fetchUser = async () => {
-    const response = await fetch('/api/get-clerk-info');
+    const response = await fetch('/api/get-user-info');
     const data = await response.json();
     setUser(data.user);
   };
@@ -223,11 +223,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!user || !currentClassId) return;
 
-    const userId = user.id;
     const classId = currentClassId;
     const email = user.emailAddresses[0]?.emailAddress || '';
 
-    ws.current = getSocket(userId, classId, email);
+    ws.current = getSocket(classId, email);
 
     ws.current?.on('user-hand-update', () => {
       fetchHandRaiseData();

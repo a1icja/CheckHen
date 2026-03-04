@@ -75,7 +75,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const message = {
     id: dbMessage.id,
     message: dbMessage.message,
-    clerkId: user.email, // Keep field name for backward compatibility
   };
 
   // Respond with the last message
