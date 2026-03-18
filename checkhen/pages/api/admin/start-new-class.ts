@@ -24,7 +24,7 @@ export default async function handler(
   if (!adminEmails.includes(session.user.email)) return res.status(403).json({ message: 'Forbidden: Admin only' });
 
   // Parse the request body to extract class details
-  const { name, duration } = JSON.parse(req.body);
+  const { name, duration } = req.body;
 
   // Create a new class in the database
   const newClass = await prisma.class.create({

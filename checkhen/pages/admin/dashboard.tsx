@@ -28,6 +28,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   RefreshCw,
+  Plus,
 } from 'lucide-react';
 import ClassSessionManager from '@/components/Admin/ClassSessionManager/ClassSessionManager';
 import { getSocket } from '@/lib/socket';
@@ -69,6 +70,7 @@ export default function AdminDashboard() {
   const theme = useMantineTheme();
   const ws = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const openModalRef = useRef<(() => void) | null>(null);
 
   // State variables
   const [user, setUser] = useState<UserInfo>();
@@ -132,6 +134,7 @@ export default function AdminDashboard() {
   const ackHandRaise = async (email: string) => {
     const res = await fetch('/api/admin/ack-hand-raise', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     });
 
@@ -145,6 +148,7 @@ export default function AdminDashboard() {
   const rateHandRaise = async (email: string, good: boolean) => {
     const res = await fetch('/api/admin/rate-hand-raise', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, good }),
     });
 
@@ -213,6 +217,8 @@ export default function AdminDashboard() {
 
     const _interval = setInterval(() => {
       fetchCheckInsData();
+      fetchHandRaiseData();
+      fetchAllChatMessages();
       fetchPaceSignals();
     }, 2500);
 
@@ -295,6 +301,7 @@ export default function AdminDashboard() {
             setCurrentClass={setCurrentClass}
             currentClassId={currentClassId}
             setCurrentClassId={setCurrentClassId}
+            onOpenModal={(openFn) => { openModalRef.current = openFn; }}
           />
 
           {currentClass && (
@@ -364,7 +371,51 @@ export default function AdminDashboard() {
         </Stack>
       </Paper>
 
-      {/* Main Content - 3 Column Layout */}
+      {/* Main Content */}
+      {!currentClass ? (
+        /* Lobby - no active class */
+        <Box
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: `linear-gradient(135deg, ${theme.colors.buBlue[0]} 0%, ${theme.colors.warmRed[0]} 100%)`,
+          }}
+        >
+          <Card shadow="lg" padding="xl" radius="md" style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
+            <Stack align="center" gap="lg">
+              <Box
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: '50%',
+                  backgroundColor: theme.colors.gray[1],
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Users size={40} color={theme.colors.gray[5]} />
+              </Box>
+              <div>
+                <Title order={2} mb="xs">No Active Class</Title>
+                <Text c="dimmed" size="md">
+                  Start a new class session so students can check in and participate.
+                </Text>
+              </div>
+              <Button
+                size="lg"
+                leftSection={<Plus size={20} />}
+                onClick={() => openModalRef.current?.()}
+              >
+                Create New Session
+              </Button>
+            </Stack>
+          </Card>
+        </Box>
+      ) : (
+      /* 3 Column Layout - active class */
       <Flex style={{ flex: 1, overflow: 'hidden' }}>
         {/* Left Column - Hand Raises */}
         <Box
@@ -527,6 +578,7 @@ export default function AdminDashboard() {
           </ScrollArea>
         </Box>
       </Flex>
+      )}
     </Box>
   );
 }

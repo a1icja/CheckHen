@@ -24,7 +24,7 @@ export default async function handler(
   }
 
   const email = session.user.email;
-  const { signalType } = JSON.parse(req.body || '{}');
+  const { signalType } = req.body;
 
   // Validate signal type
   if (!signalType || !['slow_down', 'ready_to_move_on'].includes(signalType)) {

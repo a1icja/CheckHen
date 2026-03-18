@@ -24,8 +24,7 @@ export default async function handler(
   if (!adminEmails.includes(session.user.email)) return res.status(403).json({ message: 'Forbidden: Admin only' });
 
   // Parse the request body to extract the user's email
-  const bodyJSON = JSON.parse(req.body);
-  const { email: userEmail } = bodyJSON;
+  const { email: userEmail } = req.body;
 
   // Find the first unacknowledged hand raise for the user
   const dbHandRaise = await prisma.handRaise.findFirst({

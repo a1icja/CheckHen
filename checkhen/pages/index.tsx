@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { Socket } from 'socket.io-client';
 import {
+  Alert,
   Button,
   Card,
   Paper,
@@ -23,6 +24,8 @@ import {
   CheckCircle,
   Send,
   GraduationCap,
+  LogOut,
+  AlertTriangle,
 } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
 
@@ -53,9 +56,19 @@ export default function HomePage() {
   const [currentClassName, setCurrentClassName] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [checkInResolved, setCheckInResolved] = useState(false);
   const [anonymousName, setAnonymousName] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [paceSignals, setPaceSignals] = useState({ slowDown: 0, readyToMove: 0 });
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [classEnded, setClassEnded] = useState(false);
+  const prevClassNameRef = useRef('');
+  const isCheckedInRef = useRef(false);
+
+  // Keep ref in sync with isCheckedIn state for use in closures
+  useEffect(() => {
+    isCheckedInRef.current = isCheckedIn;
+  }, [isCheckedIn]);
 
   // Auto-scroll to bottom on new messages
   const scrollToBottom = () => {
@@ -91,6 +104,7 @@ export default function HomePage() {
   const checkIfCheckedIn = async () => {
     const response = await fetch('/api/student/fetch-check-in');
     setIsCheckedIn(response.ok);
+    setCheckInResolved(true);
     return response.ok;
   };
 
@@ -100,21 +114,6 @@ export default function HomePage() {
     if (response.ok) {
       const data = await response.json();
       setAnonymousName(data.anonymousName);
-    }
-  };
-
-  // Handle check-in
-  const handleCheckIn = async () => {
-    const response = await fetch('/api/student/check-in', {
-      method: 'POST',
-    });
-
-    if (response.ok) {
-      setIsCheckedIn(true);
-      fetchHandRaiseStatus();
-      fetchAllChatMessages();
-      fetchAnonymousName();
-      fetchPaceSignals();
     }
   };
 
@@ -145,6 +144,8 @@ export default function HomePage() {
   const fetchCurrentClass = async () => {
     const response = await fetch('/api/fetch-latest-class');
     if (!response.ok) {
+      if (prevClassNameRef.current && isCheckedInRef.current) setClassEnded(true);
+      prevClassNameRef.current = '';
       setCurrentClassName('');
       return;
     }
@@ -155,6 +156,8 @@ export default function HomePage() {
 
     // If the class has ended, clear the current class name
     if (endDate < new Date()) {
+      if (prevClassNameRef.current && isCheckedInRef.current) setClassEnded(true);
+      prevClassNameRef.current = '';
       setCurrentClassName('');
       return;
     }
@@ -166,8 +169,10 @@ export default function HomePage() {
       return;
     }
 
+    const newName = `${jsonData.name} - ${formattedDate}`;
+    prevClassNameRef.current = newName;
     setCurrentClassId(jsonData.id);
-    setCurrentClassName(`${jsonData.name} - ${formattedDate}`);
+    setCurrentClassName(newName);
   };
 
   // Fetches all chat messages for the current class
@@ -200,10 +205,13 @@ export default function HomePage() {
   const sendChatMessage = async () => {
     if (!chatInput.trim()) return;
 
+    setSendingMessage(true);
     const response = await fetch('/api/student/send-chat', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: chatInput }),
     });
+    setSendingMessage(false);
 
     if (response.ok) {
       setChatInput('');
@@ -229,6 +237,7 @@ export default function HomePage() {
   const sendPaceSignal = async (signalType: 'slow_down' | 'ready_to_move_on') => {
     const response = await fetch('/api/student/send-pace-signal', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ signalType }),
     });
 
@@ -266,6 +275,19 @@ export default function HomePage() {
     }
   }, [status]);
 
+  // Poll for chat, hand raise, and pace signals when checked in
+  useEffect(() => {
+    if (!isCheckedIn) return;
+
+    const _dataInterval = setInterval(() => {
+      fetchAllChatMessages();
+      fetchHandRaiseStatus();
+      fetchPaceSignals();
+    }, 3000);
+
+    return () => clearInterval(_dataInterval);
+  }, [isCheckedIn]);
+
   // Set up WebSocket connection when user and class ID are available
   useEffect(() => {
     if (!user || !currentClassId) return;
@@ -290,6 +312,11 @@ export default function HomePage() {
 
     ws.current?.on('pace-signals-reset', () => {
       setPaceSignals({ slowDown: 0, readyToMove: 0 });
+    });
+
+    // Lower hand immediately when instructor acknowledges it
+    ws.current?.on('check-raised-hands', () => {
+      fetchHandRaiseStatus();
     });
 
     return () => {
@@ -365,60 +392,12 @@ export default function HomePage() {
     );
   }
 
-  // Show check-in UI if authenticated but not checked in
-  if (!isCheckedIn && status === 'authenticated') {
+  // Redirect to /join if authenticated, check-in resolved, not checked in, and not in preview mode
+  if (checkInResolved && !isCheckedIn && status === 'authenticated' && router.isReady && router.query.preview !== 'true') {
+    router.push('/join');
     return (
-      <Box
-        style={{
-          height: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: `linear-gradient(135deg, ${theme.colors.buBlue[0]} 0%, ${theme.colors.warmRed[0]} 100%)`,
-        }}
-      >
-        <Card shadow="lg" padding="xl" radius="md" style={{ maxWidth: 400, width: '100%' }}>
-          <Stack align="center" gap="md">
-            <Box
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: '50%',
-                backgroundColor: theme.colors.buBlue[5],
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <GraduationCap size={30} color="white" />
-            </Box>
-            <Title order={2}>Welcome to CheckHen</Title>
-
-            {currentClassName ? (
-              <>
-                <Text c="dimmed" ta="center">
-                  Current Class Session:
-                </Text>
-                <Text fw={600} ta="center">
-                  {currentClassName}
-                </Text>
-                <Button onClick={handleCheckIn} size="lg" fullWidth>
-                  Check In to Class
-                </Button>
-              </>
-            ) : (
-              <>
-                <Text c="dimmed" ta="center">
-                  No active class session available
-                </Text>
-                <Text size="sm" c="dimmed" ta="center">
-                  Please wait for your instructor to start a class
-                </Text>
-              </>
-            )}
-          </Stack>
-        </Card>
+      <Box style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Text>Loading...</Text>
       </Box>
     );
   }
@@ -450,13 +429,38 @@ export default function HomePage() {
               </Text>
             </div>
           </Group>
-          {anonymousName && (
-            <Badge size="lg" variant="light" color="buBlue">
-              {anonymousName}
-            </Badge>
-          )}
+          <Group gap="sm">
+            {anonymousName && (
+              <Badge size="lg" variant="light" color="buBlue">
+                {anonymousName}
+              </Badge>
+            )}
+            <Button
+              variant="subtle"
+              color="gray"
+              size="sm"
+              leftSection={<LogOut size={16} />}
+              onClick={() => signOut({ callbackUrl: '/' })}
+            >
+              Sign Out
+            </Button>
+          </Group>
         </Group>
       </Paper>
+
+      {/* Class ended notification */}
+      {classEnded && (
+        <Alert
+          icon={<AlertTriangle size={18} />}
+          title="Class has ended"
+          color="orange"
+          withCloseButton
+          onClose={() => setClassEnded(false)}
+          style={{ borderRadius: 0, borderBottom: `1px solid ${theme.colors.orange[3]}` }}
+        >
+          The instructor has ended this class session.
+        </Alert>
+      )}
 
       {/* Main Content - Split screen */}
       <Flex style={{ flex: 1, overflow: 'hidden' }}>
@@ -604,6 +608,7 @@ export default function HomePage() {
               <Button
                 onClick={sendChatMessage}
                 disabled={!chatInput.trim() || !currentClassName}
+                loading={sendingMessage}
                 leftSection={<Send size={16} />}
               >
                 Send

@@ -22,18 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 
   // Parse the message from the request body
-  const { message } = JSON.parse(req.body);
+  const { message } = req.body;
 
-  // Find the user in the database by email
-  const dbCheckInUser = await prisma.user.findFirst({
-    where: {
-      email: session.user.email,
-    },
+  // Upsert the user in the database by email
+  const dbCheckInUser = await prisma.user.upsert({
+    where: { email: session.user.email },
+    update: {},
+    create: { email: session.user.email, isAdmin: false },
   });
-
-  if (!dbCheckInUser) {
-    return res.status(500).json({ message: 'No user found' });
-  }
 
   // Fetch the most recent class
   const dbCurrentClass = await prisma.class.findFirst({

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Modal, Notification, NumberInput, TextInput } from '@mantine/core';
+import { Button, Group, Modal, Notification, NumberInput, SimpleGrid, Stack, Text, Title, TextInput } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconCheck, IconX } from '@tabler/icons-react';
 
@@ -8,13 +8,20 @@ export default function ClassSessionManager({
   setCurrentClass,
   currentClassId,
   setCurrentClassId,
+  onOpenModal,
 }: {
   currentClass: string;
   setCurrentClass: (value: string) => void;
   currentClassId: string;
   setCurrentClassId: (value: string) => void;
+  onOpenModal?: (openFn: () => void) => void;
 }) {
   const [opened, { open, close }] = useDisclosure(false);
+
+  // Expose the open function to the parent via callback
+  useEffect(() => {
+    if (onOpenModal) onOpenModal(open);
+  }, [onOpenModal, open]);
   const [modalClassName, setModalClassName] = useState<string>('');
   const [modalClassDuration, setModalClassDuration] = useState<string | number>('');
   const [notification, setNotification] = useState<string>('');
@@ -60,6 +67,7 @@ export default function ClassSessionManager({
 
     const response = await fetch('/api/admin/start-new-class', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, duration }),
     });
     if (!response.ok) {
@@ -87,9 +95,11 @@ export default function ClassSessionManager({
       method: 'POST',
     });
     if (!response.ok) {
-      setCurrentClass('Error ending class');
+      displayNotification('Error ending class', true);
       return;
     }
+    setCurrentClass('');
+    setCurrentClassId('');
   }
 
   useEffect(() => {
@@ -103,47 +113,49 @@ export default function ClassSessionManager({
   return (
     <>
       {currentClass && (
-        <div>
-          <h1 className="text-center text-xl font-bold underline">Current Class Session</h1>
-          <div className="text-center">{currentClass}</div>
-        </div>
+        <Stack gap={2} align="center" mb="xs">
+          <Title order={5} td="underline">Current Class Session</Title>
+          <Text size="sm" c="dimmed" ta="center">{currentClass}</Text>
+        </Stack>
       )}
       <Modal opened={opened} onClose={close} title="Start New Class" centered>
-        {notification && (
-          <Notification
-            className='justify-self-right !shadow-none'
-            icon={notificationIsError ? xIcon : checkIcon}
-            color={notificationIsError ? 'red' : 'green'}
-            title={notificationIsError ? 'Error' : 'Success'}
-            withCloseButton={false}
-            withBorder={false}
-          >
-            {notification}
-          </Notification>
-        )}
-        <div className='grid grid-cols-2 gap-2'>
-          <TextInput
-            placeholder="Class Name"
-            value={modalClassName}
-            onChange={e => setModalClassName(e.currentTarget.value)}
-          />
-          <NumberInput
-            placeholder="Duration (minutes)"
-            value={modalClassDuration}
-            onChange={setModalClassDuration}
-          />
-          <Button onClick={() => createNewClass(modalClassName, Number(modalClassDuration))} color="#4F7942">
+        <Stack gap="sm">
+          {notification && (
+            <Notification
+              icon={notificationIsError ? xIcon : checkIcon}
+              color={notificationIsError ? 'red' : 'green'}
+              title={notificationIsError ? 'Error' : 'Success'}
+              withCloseButton={false}
+              withBorder={false}
+              style={{ boxShadow: 'none' }}
+            >
+              {notification}
+            </Notification>
+          )}
+          <SimpleGrid cols={2} spacing="sm">
+            <TextInput
+              placeholder="Class Name"
+              value={modalClassName}
+              onChange={e => setModalClassName(e.currentTarget.value)}
+            />
+            <NumberInput
+              placeholder="Duration (minutes)"
+              value={modalClassDuration}
+              onChange={setModalClassDuration}
+            />
+          </SimpleGrid>
+          <Button onClick={() => createNewClass(modalClassName, Number(modalClassDuration))} color="successGreen">
             Start
           </Button>
-        </div>
+        </Stack>
       </Modal>
-      <div className="flex justify-center pt-2 gap-2 flex-wrap">
-        <Button onClick={open} color="#4F7942" disabled={!!currentClass}>
+      <Group justify="center" pt="sm" gap="sm">
+        <Button onClick={open} color="successGreen" disabled={!!currentClass}>
           Start New Class
         </Button>
-        <Button onClick={fetchCurrentClass}>Refresh</Button>
-        <Button onClick={endClassEarly} disabled={!currentClass} color='red'>End Class</Button>
-      </div>
+        <Button onClick={fetchCurrentClass} variant="light">Refresh</Button>
+        <Button onClick={endClassEarly} disabled={!currentClass} color="red">End Class</Button>
+      </Group>
     </>
   );
 }

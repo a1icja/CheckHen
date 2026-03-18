@@ -19,21 +19,17 @@ export const authOptions = {
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code"
-        }
-      }
+      allowDangerousEmailAccountLinking: true,
     }),
   ],
   callbacks: {
     async signIn({ user }: any) {
-      // Only allow users from the specified email domain
-      if (user.email && user.email.endsWith(`@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`)) {
-        return true;
-      }
+      if (!user.email) return false;
+      // Allow BU domain
+      if (user.email.endsWith(`@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`)) return true;
+      // Allow explicitly listed test emails
+      const testEmails = process.env.ALLOWED_TEST_EMAILS?.split(',').map((e) => e.trim()) || [];
+      if (testEmails.includes(user.email)) return true;
       return false;
     },
     async session({ session, token }: any) {
@@ -45,61 +41,8 @@ export const authOptions = {
     },
   },
   secret: process.env.AUTH_SECRET,
-  useSecureCookies: false,
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      }
-    },
-    callbackUrl: {
-      name: `next-auth.callback-url`,
-      options: {
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      }
-    },
-    csrfToken: {
-      name: `next-auth.csrf-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      }
-    },
-    pkceCodeVerifier: {
-      name: 'next-auth.pkce.code_verifier',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      }
-    },
-    state: {
-      name: 'next-auth.state',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      }
-    },
-    nonce: {
-      name: 'next-auth.nonce',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      }
-    }
+  pages: {
+    error: '/',
   },
 };
 
