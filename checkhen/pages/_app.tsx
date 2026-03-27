@@ -6,7 +6,6 @@ import Head from 'next/head';
 import { SessionProvider } from 'next-auth/react';
 import { MantineProvider } from '@mantine/core';
 import { theme } from '../theme';
-import AuthIcon from '@/components/AuthIcon/AuthIcon';
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
@@ -20,7 +19,6 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
           />
           <link rel="shortcut icon" href="/favicon.svg" />
         </Head>
-        <AuthIcon />
         <Component {...pageProps} />
       </MantineProvider>
     </SessionProvider>

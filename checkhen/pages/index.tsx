@@ -288,6 +288,18 @@ export default function HomePage() {
     return () => clearInterval(_dataInterval);
   }, [isCheckedIn]);
 
+  // Check out when the browser tab/window is closed
+  useEffect(() => {
+    if (!isCheckedIn) return;
+
+    const handleUnload = () => {
+      navigator.sendBeacon('/api/student/check-out');
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [isCheckedIn]);
+
   // Set up WebSocket connection when user and class ID are available
   useEffect(() => {
     if (!user || !currentClassId) return;
