@@ -34,6 +34,9 @@ model CheckIn {
   isPresent     Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
+
+  @@index([classId, isPresent])
+  @@index([userId, classId])
 }
 
 model HandRaise {
@@ -47,6 +50,9 @@ model HandRaise {
   hasValue       Boolean   @default(false)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime? @updatedAt
+
+  @@index([classId, isAcknowledged])
+  @@index([userId, classId])
 }
 
 model User {
@@ -73,6 +79,8 @@ model ChatMessage {
   anonymousName String?   // Anonymous name shown to students
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
+
+  @@index([classId])
 }
 
 model PaceSignal {
