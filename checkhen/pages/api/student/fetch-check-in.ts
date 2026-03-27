@@ -42,11 +42,18 @@ export default async function handler(
     return res.status(500).json({ message: "No class found" });
   }
 
-  // Check if the user is checked in for the current class
+  // Verify the class is still active
+  const classEnd = new Date(dbCurrentClass.createdAt.getTime() + dbCurrentClass.duration * 60000);
+  if (classEnd < new Date()) {
+    return res.status(500).json({ message: "No active class" });
+  }
+
+  // Check if the user is checked in for the current class and still present
   const dbCheckIn = await prisma.checkIn.findFirst({
     where: {
       userId: dbCheckInUser?.id,
       classId: dbCurrentClass.id,
+      isPresent: true,
     },
   });
 

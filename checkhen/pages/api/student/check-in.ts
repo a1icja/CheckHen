@@ -48,6 +48,12 @@ export default async function handler(
     return res.status(500).json({ message: "No class found" });
   }
 
+  // Verify the class is still active
+  const classEnd = new Date(currentClass.createdAt.getTime() + currentClass.duration * 60000);
+  if (classEnd < new Date()) {
+    return res.status(400).json({ message: "No active class" });
+  }
+
   // Check if the user has already checked in for the current class
   const dbCheckIn = await prisma.checkIn.findFirst({
     where: {
@@ -57,6 +63,13 @@ export default async function handler(
   });
 
   if (dbCheckIn) {
+    // If the student previously checked out, restore their presence
+    if (!dbCheckIn.isPresent) {
+      await prisma.checkIn.update({
+        where: { id: dbCheckIn.id },
+        data: { isPresent: true },
+      });
+    }
     return res.status(200).json({ message: `Already checked in: ${email}` });
   }
 

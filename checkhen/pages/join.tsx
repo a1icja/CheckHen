@@ -62,6 +62,11 @@ export default function JoinPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
+      // If the student is already checked in to the active class, send them to the classroom
+      fetch('/api/student/fetch-check-in').then((res) => {
+        if (res.ok) router.push('/');
+      });
+
       fetchActiveClasses().finally(() => setLoading(false));
 
       // Poll for new classes every 10s

@@ -327,6 +327,12 @@ export default function HomePage() {
     };
   }, [user, currentClassId]);
 
+  // Sign out after marking the student as not present
+  const handleSignOut = async () => {
+    await fetch('/api/student/check-out', { method: 'POST' });
+    signOut({ callbackUrl: '/' });
+  };
+
   // Handle Enter key in chat input
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -440,7 +446,7 @@ export default function HomePage() {
               color="gray"
               size="sm"
               leftSection={<LogOut size={16} />}
-              onClick={() => signOut({ callbackUrl: '/' })}
+              onClick={handleSignOut}
             >
               Sign Out
             </Button>
