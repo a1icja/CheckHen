@@ -25,7 +25,7 @@ export default async function handler(
   const email = session.user.email;
 
   // Check if user is admin
-  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',').map(
     (e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`
   ) || [];
 

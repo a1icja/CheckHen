@@ -13,7 +13,8 @@ import {
   useMantineTheme,
   Loader,
 } from '@mantine/core';
-import { GraduationCap, BookOpen, Clock, Users } from 'lucide-react';
+import { GraduationCap, BookOpen, Clock, Users, User } from 'lucide-react';
+import { notifications } from '@mantine/notifications';
 
 type ActiveClass = {
   id: string;
@@ -23,7 +24,7 @@ type ActiveClass = {
 };
 
 export default function JoinPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const theme = useMantineTheme();
 
@@ -33,15 +34,14 @@ export default function JoinPage() {
 
   // Redirect instructors away
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.email) {
-      const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(
-        (e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`
-      ) || [];
-      if (adminEmails.includes(session.user.email)) {
-        router.push('/admin/dashboard');
-      }
-    }
-  }, [status, session, router]);
+    if (status !== 'authenticated') return;
+
+    fetch('/api/auth/is-admin')
+      .then((r) => r.json())
+      .then(({ isAdmin }) => {
+        if (isAdmin) router.push('/admin/dashboard');
+      });
+  }, [status, router]);
 
   // Fetch active classes
   const fetchActiveClasses = async () => {
@@ -82,6 +82,7 @@ export default function JoinPage() {
     if (response.ok) {
       router.push('/');
     } else {
+      notifications.show({ title: 'Error', message: 'Could not join class. Please try again.', color: 'red' });
       setJoiningId(null);
     }
   };
@@ -150,24 +151,35 @@ export default function JoinPage() {
           padding: theme.spacing.md,
         }}
       >
-        <Group>
-          <Box
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: '50%',
-              backgroundColor: theme.colors.buBlue[5],
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+        <Group justify="space-between">
+          <Group>
+            <Box
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                backgroundColor: theme.colors.buBlue[5],
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <GraduationCap size={20} color="white" />
+            </Box>
+            <div>
+              <Title order={3}>CheckHen</Title>
+              <Text size="sm" c="dimmed">Join a Class</Text>
+            </div>
+          </Group>
+          <Button
+            variant="subtle"
+            color="gray"
+            size="sm"
+            leftSection={<User size={16} />}
+            onClick={() => router.push('/profile')}
           >
-            <GraduationCap size={20} color="white" />
-          </Box>
-          <div>
-            <Title order={3}>CheckHen</Title>
-            <Text size="sm" c="dimmed">Join a Class</Text>
-          </div>
+            Profile
+          </Button>
         </Group>
       </Box>
 

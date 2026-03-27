@@ -26,7 +26,9 @@ import {
   GraduationCap,
   LogOut,
   AlertTriangle,
+  User,
 } from 'lucide-react';
+import { notifications } from '@mantine/notifications';
 import { getSocket } from '@/lib/socket';
 
 type UserInfo = {
@@ -81,17 +83,14 @@ export default function HomePage() {
 
   // Check if user is admin and redirect (skip if ?preview=true for testing student view)
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.email) {
-      const email = session.user.email;
-      const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(
-        (e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`
-      ) || [];
+    if (status !== 'authenticated' || router.query.preview === 'true') return;
 
-      if (adminEmails.includes(email) && router.query.preview !== 'true') {
-        router.push('/admin/dashboard');
-      }
-    }
-  }, [status, session, router]);
+    fetch('/api/auth/is-admin')
+      .then((r) => r.json())
+      .then(({ isAdmin }) => {
+        if (isAdmin) router.push('/admin/dashboard');
+      });
+  }, [status, router]);
 
   // Fetches the current user's information from the backend
   const fetchUser = async () => {
@@ -129,15 +128,17 @@ export default function HomePage() {
       method: 'POST',
     });
 
-    const data = await response.json();
-
-    if (response.ok) {
-      setHandRaised(data.status);
-      ws.current?.emit('user-hand-update', {
-        classId: data.classId,
-        isRaised: data.status,
-      });
+    if (!response.ok) {
+      notifications.show({ title: 'Error', message: 'Could not update hand raise', color: 'red' });
+      return;
     }
+
+    const data = await response.json();
+    setHandRaised(data.status);
+    ws.current?.emit('user-hand-update', {
+      classId: data.classId,
+      isRaised: data.status,
+    });
   };
 
   // Fetches the latest class session details
@@ -213,12 +214,15 @@ export default function HomePage() {
     });
     setSendingMessage(false);
 
-    if (response.ok) {
-      setChatInput('');
-      ws.current?.emit('chat-message-sent', {
-        classId: currentClassId,
-      });
+    if (!response.ok) {
+      notifications.show({ title: 'Error', message: 'Could not send message', color: 'red' });
+      return;
     }
+
+    setChatInput('');
+    ws.current?.emit('chat-message-sent', {
+      classId: currentClassId,
+    });
   };
 
   // Fetch pace signals
@@ -241,15 +245,16 @@ export default function HomePage() {
       body: JSON.stringify({ signalType }),
     });
 
-    if (response.ok) {
-      // Emit socket event so other clients get notified
-      ws.current?.emit('pace-signal-sent', {
-        classId: currentClassId,
-        signalType,
-      });
-      // Refresh local counts
-      fetchPaceSignals();
+    if (!response.ok) {
+      notifications.show({ title: 'Error', message: 'Could not send pace signal', color: 'red' });
+      return;
     }
+
+    ws.current?.emit('pace-signal-sent', {
+      classId: currentClassId,
+      signalType,
+    });
+    fetchPaceSignals();
   };
 
   // Initial setup: fetch user, class, and check if checked in
@@ -453,6 +458,15 @@ export default function HomePage() {
                 {anonymousName}
               </Badge>
             )}
+            <Button
+              variant="subtle"
+              color="gray"
+              size="sm"
+              leftSection={<User size={16} />}
+              onClick={() => router.push('/profile')}
+            >
+              Profile
+            </Button>
             <Button
               variant="subtle"
               color="gray"

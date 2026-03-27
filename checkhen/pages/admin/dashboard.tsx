@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Socket } from 'socket.io-client';
 import {
+  Avatar,
   Button,
   Card,
   Paper,
@@ -29,8 +30,10 @@ import {
   ThumbsDown,
   RefreshCw,
   Plus,
+  User,
 } from 'lucide-react';
 import ClassSessionManager from '@/components/Admin/ClassSessionManager/ClassSessionManager';
+import { notifications } from '@mantine/notifications';
 import { getSocket } from '@/lib/socket';
 
 type UserInfo = {
@@ -62,6 +65,8 @@ type AttendanceRecord = {
   joinTime: string;
   user: {
     email: string;
+    profilePicture: string | null;
+    foodAllergies: string | null;
   };
 };
 
@@ -138,10 +143,12 @@ export default function AdminDashboard() {
       body: JSON.stringify({ email }),
     });
 
-    if (res.ok) {
-      ws.current?.emit('user-hand-acked', { email, classId: currentClassId });
-      fetchHandRaiseData();
+    if (!res.ok) {
+      notifications.show({ title: 'Error', message: 'Could not acknowledge hand raise', color: 'red' });
+      return;
     }
+    ws.current?.emit('user-hand-acked', { email, classId: currentClassId });
+    fetchHandRaiseData();
   };
 
   // Rate hand raise
@@ -152,10 +159,12 @@ export default function AdminDashboard() {
       body: JSON.stringify({ email, good }),
     });
 
-    if (res.ok) {
-      ws.current?.emit('user-hand-acked', { email, classId: currentClassId });
-      fetchHandRaiseData();
+    if (!res.ok) {
+      notifications.show({ title: 'Error', message: 'Could not rate hand raise', color: 'red' });
+      return;
     }
+    ws.current?.emit('user-hand-acked', { email, classId: currentClassId });
+    fetchHandRaiseData();
   };
 
   // Fetch all chat messages
@@ -201,10 +210,12 @@ export default function AdminDashboard() {
       method: 'POST',
     });
 
-    if (response.ok) {
-      setPaceSignals({ slowDown: 0, readyToMove: 0 });
-      ws.current?.emit('pace-signals-reset', { classId: currentClassId });
+    if (!response.ok) {
+      notifications.show({ title: 'Error', message: 'Could not reset pace signals', color: 'red' });
+      return;
     }
+    setPaceSignals({ slowDown: 0, readyToMove: 0 });
+    ws.current?.emit('pace-signals-reset', { classId: currentClassId });
   };
 
   // Initial setup
@@ -283,13 +294,23 @@ export default function AdminDashboard() {
               </Text>
             </div>
           </Group>
-          <Button
-            variant="outline"
-            leftSection={<ArrowLeft size={16} />}
-            onClick={() => router.push('/?preview=true')}
-          >
-            Student View
-          </Button>
+          <Group gap="xs">
+            <Button
+              variant="subtle"
+              color="gray"
+              leftSection={<User size={16} />}
+              onClick={() => router.push('/profile')}
+            >
+              My Profile
+            </Button>
+            <Button
+              variant="outline"
+              leftSection={<ArrowLeft size={16} />}
+              onClick={() => router.push('/?preview=true')}
+            >
+              Student View
+            </Button>
+          </Group>
         </Group>
       </Paper>
 
@@ -560,16 +581,26 @@ export default function AdminDashboard() {
               ) : (
                 attendance.map((record) => (
                   <Paper key={record.id} p="sm" radius="md" bg={theme.colors.gray[0]}>
-                    <Text size="sm" fw={600}>
-                      {record.user.email.split('@')[0]}
-                    </Text>
-                    <Group justify="space-between" mt={4}>
-                      <Badge size="xs" variant="light">
-                        {record.anonymousName || 'No name'}
-                      </Badge>
-                      <Text size="xs" c="dimmed">
-                        {new Date(record.joinTime).toLocaleTimeString()}
-                      </Text>
+                    <Group gap="sm" align="flex-start">
+                      <Avatar src={record.user.profilePicture} size={36} radius="50%" />
+                      <Box style={{ flex: 1, minWidth: 0 }}>
+                        <Text size="sm" fw={600} truncate>
+                          {record.user.email.split('@')[0]}
+                        </Text>
+                        <Group justify="space-between" mt={2}>
+                          <Badge size="xs" variant="light">
+                            {record.anonymousName || 'No name'}
+                          </Badge>
+                          <Text size="xs" c="dimmed">
+                            {new Date(record.joinTime).toLocaleTimeString()}
+                          </Text>
+                        </Group>
+                        {record.user.foodAllergies && (
+                          <Badge size="xs" color="orange" variant="light" mt={4}>
+                            Allergy: {record.user.foodAllergies}
+                          </Badge>
+                        )}
+                      </Box>
                     </Group>
                   </Paper>
                 ))

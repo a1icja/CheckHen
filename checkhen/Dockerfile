@@ -25,9 +25,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ARG NEXT_PUBLIC_EMAIL_DOMAIN
-ARG NEXT_PUBLIC_ADMIN_EMAILS
+ARG ADMIN_EMAILS
 ENV NEXT_PUBLIC_EMAIL_DOMAIN=${NEXT_PUBLIC_EMAIL_DOMAIN}
-ENV NEXT_PUBLIC_ADMIN_EMAILS=${NEXT_PUBLIC_ADMIN_EMAILS}
+ENV ADMIN_EMAILS=${ADMIN_EMAILS}
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry

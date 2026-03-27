@@ -39,7 +39,7 @@ export default async function handler(
     update: {},
     create: {
       email,
-      isAdmin: process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',')
+      isAdmin: process.env.ADMIN_EMAILS?.split(',')
         .map((e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`)
         .includes(email) || false,
     },
