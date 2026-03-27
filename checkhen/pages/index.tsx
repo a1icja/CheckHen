@@ -187,21 +187,6 @@ export default function HomePage() {
     setMessages(jsonData);
   };
 
-  // Fetches the latest chat message and updates the message list
-  const fetchLastChatMessage = async () => {
-    const response = await fetch('/api/student/fetch-last-chat');
-    if (!response.ok) return;
-
-    const data = await response.json();
-    const jsonData = JSON.parse(data.message);
-    const lastMessage = jsonData[0];
-
-    setMessages((prevMessages) => {
-      const newMessages = prevMessages.filter((message) => message.id !== lastMessage.id);
-      return [...newMessages, lastMessage];
-    });
-  };
-
   // Sends a new chat message
   const sendChatMessage = async () => {
     if (!chatInput.trim()) return;
@@ -274,13 +259,13 @@ export default function HomePage() {
       // Periodically refresh the current class details
       const _interval = setInterval(() => {
         fetchCurrentClass();
-      }, 5000);
+      }, 10000);
 
       return () => clearInterval(_interval);
     }
   }, [status]);
 
-  // Poll for chat, hand raise, and pace signals when checked in
+  // Fallback poll for hand raise and pace signals when checked in (chat comes via socket)
   useEffect(() => {
     if (!isCheckedIn) return;
 
@@ -288,7 +273,7 @@ export default function HomePage() {
       fetchAllChatMessages();
       fetchHandRaiseStatus();
       fetchPaceSignals();
-    }, 3000);
+    }, 10000);
 
     return () => clearInterval(_dataInterval);
   }, [isCheckedIn]);
@@ -320,7 +305,7 @@ export default function HomePage() {
     });
 
     ws.current?.on('fetch-messages', () => {
-      fetchLastChatMessage();
+      fetchAllChatMessages();
     });
 
     ws.current?.on('pace-signal-update', () => {

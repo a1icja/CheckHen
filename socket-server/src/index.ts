@@ -101,29 +101,27 @@ io.on("connection", async (socket) => {
   });
 
   socket.onAny((event, ...args) => {
+    const roomId = args[0]?.classId as string | undefined;
+    if (!roomId) return;
+
     if (event === "user-hand-update") {
-      io.sockets.emit("user-hand-update", args[0]);
+      io.to(roomId).emit("user-hand-update", args[0]);
     }
 
     if (event === "user-hand-acked") {
-      io.sockets.emit("check-raised-hands", args[0]);
+      io.to(roomId).emit("check-raised-hands", args[0]);
     }
 
     if (event === "chat-message-sent") {
-      io.sockets.emit("fetch-messages", args[0]);
+      io.to(roomId).emit("fetch-messages", args[0]);
     }
 
-    // Pace signal events
     if (event === "pace-signal-sent") {
-      // Broadcast to all clients that a new pace signal was sent
-      // args[0] should contain { classId, signalType }
-      io.sockets.emit("pace-signal-update", args[0]);
+      io.to(roomId).emit("pace-signal-update", args[0]);
     }
 
     if (event === "pace-signals-reset") {
-      // Broadcast to all clients that pace signals were reset
-      // args[0] should contain { classId }
-      io.sockets.emit("pace-signals-reset", args[0]);
+      io.to(roomId).emit("pace-signals-reset", args[0]);
     }
   });
 });

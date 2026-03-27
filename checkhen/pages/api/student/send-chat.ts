@@ -23,6 +23,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   // Parse the message from the request body
   const { message } = req.body;
+  if (!message || typeof message !== 'string' || message.trim().length === 0 || message.length > 1000) {
+    return res.status(400).json({ message: 'Invalid message' });
+  }
 
   // Upsert the user in the database by email
   const dbCheckInUser = await prisma.user.upsert({

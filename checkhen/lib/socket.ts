@@ -9,7 +9,9 @@ export const getSocket = (classId: string, email: string): Socket | null => {
     return null;
   }
 
-  const socket = io(':6060', {
+  const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:6060';
+
+  const socket = io(SOCKET_URL, {
     query: {
       classId,
       email,

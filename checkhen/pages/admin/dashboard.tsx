@@ -213,20 +213,6 @@ export default function AdminDashboard() {
     setMessages(jsonData);
   };
 
-  // Fetch last chat message
-  const fetchLastChatMessage = async () => {
-    const response = await fetch('/api/admin/fetch-last-chat');
-    if (!response.ok) return;
-
-    const data = await response.json();
-    const jsonData = JSON.parse(data.message);
-    const lastMessage = jsonData[0];
-
-    setMessages((prevMessages) => {
-      const newMessages = prevMessages.filter((message) => message.id !== lastMessage.id);
-      return [...newMessages, lastMessage];
-    });
-  };
 
   // Fetch pace signals
   const fetchPaceSignals = async () => {
@@ -267,7 +253,7 @@ export default function AdminDashboard() {
       fetchHandRaiseData();
       fetchAllChatMessages();
       fetchPaceSignals();
-    }, 2500);
+    }, 10000);
 
     return () => clearInterval(_interval);
   }, []);
@@ -286,7 +272,7 @@ export default function AdminDashboard() {
     });
 
     ws.current?.on('fetch-messages', () => {
-      fetchLastChatMessage();
+      fetchAllChatMessages();
     });
 
     ws.current?.on('pace-signal-update', () => {

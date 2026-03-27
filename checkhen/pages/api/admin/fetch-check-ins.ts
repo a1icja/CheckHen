@@ -37,11 +37,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(500).json({ message: 'No class found' });
   }
 
-  // Fetch all check-ins for the current class where the student is still present
+  // Fetch all check-ins for the current class where the student is still present (exclude admins)
   const dbCheckInUsers = await prisma.checkIn.findMany({
     where: {
       classId: dbCurrentClass.id,
       isPresent: true,
+      user: {
+        email: { notIn: adminEmails },
+      },
     },
     include: {
       user: true,

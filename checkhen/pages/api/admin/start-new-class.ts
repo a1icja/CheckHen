@@ -25,6 +25,12 @@ export default async function handler(
 
   // Parse the request body to extract class details
   const { name, duration } = req.body;
+  if (!name || typeof name !== 'string' || name.trim().length === 0 || name.length > 200) {
+    return res.status(400).json({ message: 'Invalid class name' });
+  }
+  if (!duration || typeof duration !== 'number' || duration <= 0 || duration > 480) {
+    return res.status(400).json({ message: 'Invalid duration (must be 1–480 minutes)' });
+  }
 
   // Create a new class in the database
   const newClass = await prisma.class.create({
