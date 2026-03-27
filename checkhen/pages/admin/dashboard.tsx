@@ -85,6 +85,42 @@ export default function AdminDashboard() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [paceSignals, setPaceSignals] = useState({ slowDown: 0, readyToMove: 0 });
+  const [leftWidth, setLeftWidth] = useState(280);
+  const [rightWidth, setRightWidth] = useState(280);
+  const leftStartX = useRef(0);
+  const leftStartWidth = useRef(0);
+  const rightStartX = useRef(0);
+  const rightStartWidth = useRef(0);
+
+  const onLeftDragStart = (e: React.MouseEvent) => {
+    leftStartX.current = e.clientX;
+    leftStartWidth.current = leftWidth;
+    const onMove = (ev: MouseEvent) => {
+      const delta = ev.clientX - leftStartX.current;
+      setLeftWidth(Math.max(160, Math.min(600, leftStartWidth.current + delta)));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  const onRightDragStart = (e: React.MouseEvent) => {
+    rightStartX.current = e.clientX;
+    rightStartWidth.current = rightWidth;
+    const onMove = (ev: MouseEvent) => {
+      const delta = rightStartX.current - ev.clientX;
+      setRightWidth(Math.max(160, Math.min(600, rightStartWidth.current + delta)));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
   // Auto-scroll to bottom on new messages
   const scrollToBottom = () => {
@@ -441,10 +477,11 @@ export default function AdminDashboard() {
         {/* Left Column - Hand Raises */}
         <Box
           style={{
-            width: 320,
-            borderRight: `1px solid ${theme.colors.gray[3]}`,
+            width: leftWidth,
+            flexShrink: 0,
             display: 'flex',
             flexDirection: 'column',
+            overflow: 'hidden',
           }}
         >
           <Paper p="md" shadow="xs" withBorder style={{ borderRadius: 0 }}>
@@ -519,8 +556,23 @@ export default function AdminDashboard() {
           </ScrollArea>
         </Box>
 
+        {/* Left drag handle */}
+        <Box
+          onMouseDown={onLeftDragStart}
+          style={{
+            width: 5,
+            flexShrink: 0,
+            cursor: 'col-resize',
+            background: theme.colors.gray[3],
+            transition: 'background 0.15s',
+            zIndex: 1,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = theme.colors.buBlue[4]; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = theme.colors.gray[3]; }}
+        />
+
         {/* Center Column - De-anonymized Chat */}
-        <Box style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Box style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <Paper p="md" shadow="xs" withBorder style={{ borderRadius: 0 }}>
             <Title order={4}>Class Discussion</Title>
             <Text size="sm" c="dimmed">
@@ -559,13 +611,29 @@ export default function AdminDashboard() {
           </ScrollArea>
         </Box>
 
+        {/* Right drag handle */}
+        <Box
+          onMouseDown={onRightDragStart}
+          style={{
+            width: 5,
+            flexShrink: 0,
+            cursor: 'col-resize',
+            background: theme.colors.gray[3],
+            transition: 'background 0.15s',
+            zIndex: 1,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = theme.colors.buBlue[4]; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = theme.colors.gray[3]; }}
+        />
+
         {/* Right Column - Attendance List */}
         <Box
           style={{
-            width: 320,
-            borderLeft: `1px solid ${theme.colors.gray[3]}`,
+            width: rightWidth,
+            flexShrink: 0,
             display: 'flex',
             flexDirection: 'column',
+            overflow: 'hidden',
           }}
         >
           <Paper p="md" shadow="xs" withBorder style={{ borderRadius: 0 }}>
