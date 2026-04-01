@@ -1,14 +1,21 @@
 // Anonymous name generator for students
-// Generates names like "Swift Panda", "Blue Eagle", "Bright Tiger"
+// Generates names like "Admiring Panda", "Dreamy Eagle", "Elastic Tiger"
+// Adjectives sourced from the Docker container name generator (moby/moby),
 
 const adjectives = [
-  'Swift', 'Blue', 'Bright', 'Bold', 'Clever', 'Eager', 'Fierce', 'Gentle',
-  'Happy', 'Jolly', 'Kind', 'Lucky', 'Merry', 'Noble', 'Proud', 'Quick',
-  'Radiant', 'Silent', 'Thoughtful', 'Valiant', 'Wise', 'Zealous', 'Agile',
-  'Brave', 'Calm', 'Daring', 'Energetic', 'Fearless', 'Graceful', 'Humble',
-  'Inventive', 'Joyful', 'Keen', 'Lively', 'Mighty', 'Nimble', 'Optimistic',
-  'Patient', 'Quiet', 'Resilient', 'Serene', 'Trusty', 'Upbeat', 'Vibrant',
-  'Witty', 'Young', 'Zesty', 'Adventurous', 'Cheerful', 'Dynamic'
+  'Admiring', 'Adoring', 'Affectionate', 'Amazing', 'Awesome', 'Blissful',
+  'Brave', 'Clever', 'Compassionate', 'Competent', 'Confident', 'Dazzling',
+  'Determined', 'Distracted', 'Dreamy', 'Eager', 'Ecstatic', 
+  'Elated', 'Elegant', 'Eloquent', 'Epic', 'Fervent', 'Festive',
+  'Focused', 'Friendly', 'Frosty', 'Gallant', 'Gifted', 'Goofy', 'Gracious',
+  'Happy', 'Hardcore', 'Heuristic', 'Hopeful', 'Hungry', 'Infallible',
+  'Inspiring', 'Jolly', 'Jovial', 'Keen', 'Kind', 'Laughing', 'Loving',
+  'Lucid', 'Modest', 'Musing', 'Mystifying', 'Nifty', 'Nostalgic', 'Objective',
+  'Optimistic', 'Peaceful', 'Pedantic', 'Pensive', 'Practical', 'Priceless',
+  'Quirky', 'Quizzical', 'Relaxed', 'Reverent', 'Serene', 'Sharp',
+  'Silly', 'Sleepy', 'Stoic', 'Tender', 'Thirsty', 'Trusting', 'Unruffled',
+  'Upbeat', 'Vibrant', 'Vigilant', 'Vigorous', 'Wizardly', 'Wonderful',
+  'Xenodochial', 'Youthful', 'Zealous', 'Zen'
 ];
 
 const animals = [
