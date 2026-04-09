@@ -40,14 +40,18 @@ export default async function handler(
     return res.status(404).json({ message: 'User not found' });
   }
 
-  // Fetch the most recently created class
-  const currentClass = await prisma.class.findFirst({
-    orderBy: [{ createdAt: 'desc' }],
+  // Find the class the student is currently checked into
+  const activeCheckIn = await prisma.checkIn.findFirst({
+    where: { userId: dbUser.id, isPresent: true },
+    orderBy: { createdAt: 'desc' },
+    include: { class: true },
   });
 
-  if (!currentClass) {
-    return res.status(500).json({ message: 'No class found' });
+  if (!activeCheckIn) {
+    return res.status(400).json({ message: 'Not currently checked in to a class' });
   }
+
+  const currentClass = activeCheckIn.class;
 
   // One vote per student — replace any existing signal with the new one
   await prisma.paceSignal.deleteMany({

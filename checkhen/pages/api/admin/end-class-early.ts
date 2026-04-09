@@ -57,6 +57,12 @@ export default async function handler(
     },
   });
 
+  // Stamp checkOutTime on all still-present students
+  await prisma.checkIn.updateMany({
+    where: { classId: currentClass.id, isPresent: true },
+    data: { isPresent: false, checkOutTime: new Date() },
+  });
+
   // Respond with the updated class details
   res.status(200).json({ message: JSON.stringify(updatedClass) });
 }

@@ -326,11 +326,10 @@ export default function AdminDashboard() {
               My Profile
             </Button>
             <Button
-              variant="outline"
-              leftSection={<ArrowLeft size={16} />}
-              onClick={() => router.push('/?preview=true')}
+              variant="light"
+              onClick={() => router.push('/admin/analytics')}
             >
-              Student View
+              Analytics
             </Button>
           </Group>
         </Group>

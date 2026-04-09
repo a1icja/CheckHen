@@ -44,7 +44,7 @@ export default async function handler(
       classId: currentClass.id,
       isPresent: true,
     },
-    data: { isPresent: false },
+    data: { isPresent: false, checkOutTime: new Date() },
   });
 
   res.status(200).json({ message: 'Checked out' });

@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.28.4",
+    "@mantine/charts": "^9.0.1",
     "@mantine/core": "7.16.3",
     "@mantine/hooks": "7.16.3",
     "@mantine/notifications": "7.16.3",
@@ -35,6 +36,7 @@
     "prisma": "6.3.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "recharts": "^3.8.1",
     "socket.io-client": "4.8.1"
   },
   "devDependencies": {

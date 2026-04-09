@@ -82,7 +82,7 @@ export const theme = createTheme({
     },
   },
   other: {
-    // Gradient backgrounds for Lovable-style pages
+    // Gradient backgrounds
     gradients: {
       primary: 'linear-gradient(135deg, rgba(0, 102, 255, 0.05) 0%, rgba(255, 255, 255, 0) 50%, rgba(204, 26, 26, 0.05) 100%)',
       card: 'linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.95) 100%)',

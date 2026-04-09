@@ -32,6 +32,7 @@ model CheckIn {
   socketId      String?
   anonymousName String?   // Anonymous name like "Swift Panda"
   isPresent     Boolean   @default(true)
+  checkOutTime  DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
 
