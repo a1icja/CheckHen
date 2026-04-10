@@ -34,6 +34,9 @@ export const authOptions = {
       const allowed = user.email.endsWith(allowedDomain) || testEmails.includes(user.email);
       if (!allowed) return false;
 
+      const adminEmails = process.env.ADMIN_EMAILS?.split(',')
+        .map((e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`) || [];
+
       // Upsert user and sync profile picture from Google
       await prisma.user.upsert({
         where: { email: user.email },
@@ -41,17 +44,24 @@ export const authOptions = {
         create: {
           email: user.email,
           profilePicture: user.image ?? undefined,
-          isAdmin: process.env.ADMIN_EMAILS?.split(',')
-            .map((e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`)
-            .includes(user.email) || false,
+          isAdmin: adminEmails.includes(user.email),
         },
       });
       return true;
     },
+    async jwt({ token, user }: any) {
+      // Embed isAdmin into the JWT at sign-in so it's available on every request
+      if (user?.email) {
+        const adminEmails = process.env.ADMIN_EMAILS?.split(',')
+          .map((e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`) || [];
+        token.isAdmin = adminEmails.includes(user.email);
+      }
+      return token;
+    },
     async session({ session, token }: any) {
-      // Add email to session for easy access
       if (session.user && token.email) {
         session.user.email = token.email as string;
+        session.user.isAdmin = token.isAdmin as boolean ?? false;
       }
       return session;
     },

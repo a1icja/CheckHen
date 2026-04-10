@@ -46,6 +46,7 @@ type ChatMessage = {
 
 export default function HomePage() {
   const { data: session, status } = useSession();
+  const isAdmin = (session?.user as any)?.isAdmin === true;
   const router = useRouter();
   const theme = useMantineTheme();
   const ws = useRef<Socket | null>(null);
@@ -81,16 +82,11 @@ export default function HomePage() {
     scrollToBottom();
   }, [messages]);
 
-  // Check if user is admin and redirect (skip if ?preview=true for testing student view)
+  // Redirect admins to dashboard (isAdmin is embedded in the session token — no extra fetch)
   useEffect(() => {
     if (status !== 'authenticated' || router.query.preview === 'true') return;
-
-    fetch('/api/auth/is-admin')
-      .then((r) => r.json())
-      .then(({ isAdmin }) => {
-        if (isAdmin) router.push('/admin/dashboard');
-      });
-  }, [status, router]);
+    if (isAdmin) router.push('/admin/dashboard');
+  }, [status, isAdmin, router]);
 
   // Fetches the current user's information from the backend
   const fetchUser = async () => {
@@ -242,27 +238,42 @@ export default function HomePage() {
     fetchPaceSignals();
   };
 
-  // Initial setup: fetch user, class, and check if checked in
+  // Initial setup: one startup request instead of 5+ serial fetches
   useEffect(() => {
-    if (status === 'authenticated') {
-      fetchUser();
-      fetchCurrentClass();
-      checkIfCheckedIn().then((checkedIn) => {
-        if (checkedIn) {
-          fetchHandRaiseStatus();
-          fetchAllChatMessages();
-          fetchAnonymousName();
-          fetchPaceSignals();
+    if (status !== 'authenticated') return;
+
+    fetchUser();
+
+    fetch('/api/student/startup')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.isCheckedIn) {
+          setIsCheckedIn(true);
+          setCurrentClassId(d.classId);
+          const date = d.classId ? new Date() : null; // class name comes from startup
+          setCurrentClassName(d.className ?? '');
+          setAnonymousName(d.anonymousName);
+          setHandRaised(d.handRaised);
+          setPaceSignals({ slowDown: d.paceSignals.slowDown, readyToMove: d.paceSignals.readyToMove });
+          setMessages(d.messages);
+          prevClassNameRef.current = d.className ?? '';
+          isCheckedInRef.current = true;
+        } else {
+          setIsCheckedIn(false);
+          if (d.classId) {
+            setCurrentClassId(d.classId);
+            setCurrentClassName(d.className ?? '');
+          }
         }
+        setCheckInResolved(true);
       });
 
-      // Periodically refresh the current class details
-      const _interval = setInterval(() => {
-        fetchCurrentClass();
-      }, 10000);
+    // Periodically refresh the current class details
+    const _interval = setInterval(() => {
+      fetchCurrentClass();
+    }, 10000);
 
-      return () => clearInterval(_interval);
-    }
+    return () => clearInterval(_interval);
   }, [status]);
 
   // Fallback poll for hand raise and pace signals when checked in (chat comes via socket)

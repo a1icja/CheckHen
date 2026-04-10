@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { PrismaClient } from "@prisma/client";
+import cron from "node-cron";
 
 const prisma = new PrismaClient(); // Initialize Prisma client for database operations
 
@@ -83,6 +84,38 @@ const handleSocketConnection = async (socket: Socket) => {
 
   socket.join(classId);
 };
+
+// Auto-start scheduled classes every minute
+cron.schedule("* * * * *", async () => {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const hhmm = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+
+  const templates = await prisma.classTemplate.findMany({
+    where: { daysOfWeek: { has: dayOfWeek }, startTime: hhmm },
+  });
+
+  for (const t of templates) {
+    // Avoid double-creating if one was already started in this minute window
+    const recentClass = await prisma.class.findFirst({
+      where: {
+        templateId: t.id,
+        createdAt: { gte: new Date(now.getTime() - 60000) },
+      },
+    });
+    if (!recentClass) {
+      await prisma.class.create({
+        data: {
+          name: t.name,
+          duration: t.duration,
+          color: t.color,
+          templateId: t.id,
+        },
+      });
+      console.log(`[cron] Auto-started class "${t.name}" from template ${t.id}`);
+    }
+  }
+});
 
 // Listen for new socket connections
 io.on("connection", async (socket) => {

@@ -21,10 +21,12 @@ type ActiveClass = {
   name: string;
   createdAt: string;
   duration: number;
+  color?: string | null;
 };
 
 export default function JoinPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
+  const isAdmin = (session?.user as any)?.isAdmin === true;
   const router = useRouter();
   const theme = useMantineTheme();
 
@@ -32,16 +34,11 @@ export default function JoinPage() {
   const [loading, setLoading] = useState(true);
   const [joiningId, setJoiningId] = useState<string | null>(null);
 
-  // Redirect instructors away
+  // Redirect instructors away (isAdmin from session token — no extra fetch)
   useEffect(() => {
     if (status !== 'authenticated') return;
-
-    fetch('/api/auth/is-admin')
-      .then((r) => r.json())
-      .then(({ isAdmin }) => {
-        if (isAdmin) router.push('/admin/dashboard');
-      });
-  }, [status, router]);
+    if (isAdmin) router.push('/admin/dashboard');
+  }, [status, isAdmin, router]);
 
   // Fetch active classes
   const fetchActiveClasses = async () => {
@@ -236,9 +233,17 @@ export default function JoinPage() {
               const startDate = new Date(cls.createdAt);
               const endDate = new Date(startDate.getTime() + cls.duration * 60000);
               const minutesLeft = Math.max(0, Math.round((endDate.getTime() - Date.now()) / 60000));
+              const accent = cls.color ?? theme.colors.buBlue[5];
+              const accentLight = cls.color ? `${cls.color}20` : theme.colors.buBlue[0];
 
               return (
-                <Card key={cls.id} shadow="sm" padding="lg" radius="md">
+                <Card
+                  key={cls.id}
+                  shadow="sm"
+                  padding="lg"
+                  radius="md"
+                  style={{ borderLeft: `4px solid ${accent}` }}
+                >
                   <Group justify="space-between" align="flex-start" mb="md">
                     <Group gap="sm">
                       <Box
@@ -246,14 +251,14 @@ export default function JoinPage() {
                           width: 44,
                           height: 44,
                           borderRadius: theme.radius.md,
-                          backgroundColor: theme.colors.buBlue[0],
+                          backgroundColor: accentLight,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0,
                         }}
                       >
-                        <Users size={22} color={theme.colors.buBlue[6]} />
+                        <Users size={22} color={accent} />
                       </Box>
                       <div>
                         <Title order={4}>{cls.name}</Title>
@@ -276,6 +281,7 @@ export default function JoinPage() {
                     size="md"
                     loading={joiningId === cls.id}
                     onClick={() => handleJoin(cls.id)}
+                    style={cls.color ? { backgroundColor: cls.color } : undefined}
                   >
                     Join Session
                   </Button>

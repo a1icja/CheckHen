@@ -11,16 +11,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model ClassTemplate {
+  id         String   @id @default(uuid())
+  name       String
+  color      String   // hex, e.g. "#0066ff"
+  duration   Int      // minutes per session
+  daysOfWeek Int[]    // 0=Sun … 6=Sat
+  startTime  String   // "HH:MM" 24h
+  tz         String   @default("America/New_York")
+  createdAt  DateTime @default(now())
+  classes    Class[]
+}
+
 model Class {
-  id           String        @id @default(uuid())
+  id           String         @id @default(uuid())
   checkIns     CheckIn[]
   handRaises   HandRaise[]
   chatMessages ChatMessage[]
   paceSignals  PaceSignal[]
   name         String
   duration     Int
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime?     @updatedAt
+  color        String?        // hex color copied from template (or set ad hoc)
+  templateId   String?
+  template     ClassTemplate? @relation(fields: [templateId], references: [id])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime?      @updatedAt
 }
 
 model CheckIn {
@@ -30,9 +45,14 @@ model CheckIn {
   class         Class     @relation(fields: [classId], references: [id])
   classId       String
   socketId      String?
-  anonymousName String?
+  anonymousName String?   // Anonymous name like "Swift Panda"
+  isPresent     Boolean   @default(true)
+  checkOutTime  DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
+
+  @@index([classId, isPresent])
+  @@index([userId, classId])
 }
 
 model HandRaise {
@@ -46,18 +66,23 @@ model HandRaise {
   hasValue       Boolean   @default(false)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime? @updatedAt
+
+  @@index([classId, isAcknowledged])
+  @@index([userId, classId])
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  isAdmin      Boolean       @default(false)
-  checkIns     CheckIn[]
-  handRaises   HandRaise[]
-  chatMessages ChatMessage[]
-  paceSignals  PaceSignal[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime?     @updatedAt
+  id             String        @id @default(uuid())
+  email          String        @unique
+  isAdmin        Boolean       @default(false)
+  profilePicture String?       // URL from Google OAuth
+  foodAllergies  String?       // Free-text, e.g. "peanuts, dairy"
+  checkIns       CheckIn[]
+  handRaises     HandRaise[]
+  chatMessages   ChatMessage[]
+  paceSignals    PaceSignal[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime?     @updatedAt
 }
 
 model ChatMessage {
@@ -67,19 +92,21 @@ model ChatMessage {
   class         Class     @relation(fields: [classId], references: [id])
   classId       String
   message       String
-  anonymousName String?
+  anonymousName String?   // Anonymous name shown to students
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
+
+  @@index([classId])
 }
 
 model PaceSignal {
-  id         String   @id @default(uuid())
-  user       User     @relation(fields: [userId], references: [id])
+  id         String    @id @default(uuid())
+  user       User      @relation(fields: [userId], references: [id])
   userId     String
-  class      Class    @relation(fields: [classId], references: [id])
+  class      Class     @relation(fields: [classId], references: [id])
   classId    String
-  signalType String
-  createdAt  DateTime @default(now())
+  signalType String    // "slow_down" or "ready_to_move_on"
+  createdAt  DateTime  @default(now())
 
   @@index([classId, signalType])
 }

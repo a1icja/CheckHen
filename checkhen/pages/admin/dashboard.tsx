@@ -5,6 +5,7 @@ import {
   Avatar,
   Button,
   Card,
+  Loader,
   Paper,
   ScrollArea,
   Stack,
@@ -81,6 +82,8 @@ export default function AdminDashboard() {
   const [user, setUser] = useState<UserInfo>();
   const [currentClassId, setCurrentClassId] = useState<string>('');
   const [currentClass, setCurrentClass] = useState<string>('');
+  const [currentClassColor, setCurrentClassColor] = useState<string | null>(null);
+  const [dashboardReady, setDashboardReady] = useState(false);
   const [handRaises, setHandRaises] = useState<HandRaise[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
@@ -336,14 +339,24 @@ export default function AdminDashboard() {
       </Paper>
 
       {/* Session Manager & Stats Bar */}
-      <Paper p="md" shadow="xs" withBorder style={{ borderRadius: 0 }}>
+      <Paper
+        p="md"
+        shadow="xs"
+        withBorder
+        style={{
+          borderRadius: 0,
+          borderLeft: currentClassColor ? `4px solid ${currentClassColor}` : undefined,
+        }}
+      >
         <Stack gap="md">
           <ClassSessionManager
             currentClass={currentClass}
             setCurrentClass={setCurrentClass}
             currentClassId={currentClassId}
             setCurrentClassId={setCurrentClassId}
+            onClassColor={(color) => setCurrentClassColor(color)}
             onOpenModal={(openFn) => { openModalRef.current = openFn; }}
+            onReady={() => setDashboardReady(true)}
           />
 
           {currentClass && (
@@ -414,7 +427,12 @@ export default function AdminDashboard() {
       </Paper>
 
       {/* Main Content */}
-      {!currentClass ? (
+      {!dashboardReady ? (
+        /* Loading — wait for ClassSessionManager to finish its first fetch */
+        <Box style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Loader size="lg" />
+        </Box>
+      ) : !currentClass ? (
         /* Lobby - no active class */
         <Box
           style={{

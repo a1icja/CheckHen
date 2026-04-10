@@ -11,16 +11,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model ClassTemplate {
+  id         String   @id @default(uuid())
+  name       String
+  color      String   // hex, e.g. "#0066ff"
+  duration   Int      // minutes per session
+  daysOfWeek Int[]    // 0=Sun … 6=Sat
+  startTime  String   // "HH:MM" 24h
+  tz         String   @default("America/New_York")
+  createdAt  DateTime @default(now())
+  classes    Class[]
+}
+
 model Class {
-  id           String        @id @default(uuid())
+  id           String         @id @default(uuid())
   checkIns     CheckIn[]
   handRaises   HandRaise[]
   chatMessages ChatMessage[]
   paceSignals  PaceSignal[]
   name         String
   duration     Int
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime?     @updatedAt
+  color        String?        // hex color copied from template (or set ad hoc)
+  templateId   String?
+  template     ClassTemplate? @relation(fields: [templateId], references: [id])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime?      @updatedAt
 }
 
 model CheckIn {
