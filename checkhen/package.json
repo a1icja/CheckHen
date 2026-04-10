@@ -19,7 +19,9 @@
     "test": "npm run prettier:check && npm run lint && npm run typecheck && npm run jest",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
-    "migrate:dev": "dotenv -e .env.local -- prisma migrate dev"
+    "migrate:dev": "dotenv -e .env.local -- prisma migrate dev",
+    "seed": "dotenv -e .env.local -- tsx scripts/seed-test-data.ts",
+    "seed:clean": "dotenv -e .env.local -- tsx scripts/clear-test-data.ts"
   },
   "dependencies": {
     "@babel/runtime": "^7.28.4",
@@ -71,6 +73,7 @@
     "stylelint": "16.13.2",
     "stylelint-config-standard-scss": "14.0.0",
     "ts-jest": "^29.2.5",
+    "tsx": "^4.21.0",
     "typescript": "5.7.3",
     "typescript-eslint": "8.20.0"
   },

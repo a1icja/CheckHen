@@ -20,11 +20,36 @@ type TemplateOption = {
   color: string;
 };
 
+type PaceTimelineBucket = {
+  minutesBucket: number;
+  slowDown: number;
+  readyToMove: number;
+};
+
+type LeaveEvent = {
+  anonymousName: string | null;
+  checkInTime: string;
+  checkOutTime: string | null;
+  durationMinutes: number | null;
+  leftEarly: boolean;
+};
+
+type AggregatedStats = {
+  totalStudents: number;
+  avgDurationMinutes: number;
+  absentMoreThan50Percent: number;
+  avgMessagesPerStudent: number;
+  avgHandRaisesPerStudent: number;
+  paceSignalTimeline: PaceTimelineBucket[];
+  leaveEvents: LeaveEvent[];
+};
+
 type AnalyticsResponse = {
   students: StudentSummary[];
   paceAggregate: { slow_down: number; ready_to_move_on: number };
   classes: { id: string; name: string; createdAt: string; duration: number; color: string | null }[];
   selectedClass: { id: string; name: string; createdAt: string; duration: number; color: string | null } | null;
+  aggregated?: AggregatedStats;
   // All-time mode extras
   allTime?: boolean;
   template?: TemplateOption | null;
@@ -33,6 +58,40 @@ type AnalyticsResponse = {
 };
 
 type ErrorResponse = { message: string };
+
+const BUCKET_SIZE = 5; // minutes
+
+function bucketPaceSignals(
+  paceSignals: { signalType: string; createdAt: Date }[],
+  classStart: Date,
+  classDuration: number,
+): PaceTimelineBucket[] {
+  const numBuckets = Math.ceil(classDuration / BUCKET_SIZE) + 1;
+  const buckets = new Map<number, { slowDown: number; readyToMove: number }>();
+  for (let i = 0; i < numBuckets; i++) {
+    buckets.set(i * BUCKET_SIZE, { slowDown: 0, readyToMove: 0 });
+  }
+
+  for (const signal of paceSignals) {
+    let minutesFromStart = (signal.createdAt.getTime() - classStart.getTime()) / 60000;
+    minutesFromStart = Math.max(0, Math.min(minutesFromStart, classDuration));
+    const key = Math.floor(minutesFromStart / BUCKET_SIZE) * BUCKET_SIZE;
+    const bucket = buckets.get(key)!;
+    if (signal.signalType === 'slow_down') bucket.slowDown++;
+    else if (signal.signalType === 'ready_to_move_on') bucket.readyToMove++;
+  }
+
+  const result: PaceTimelineBucket[] = Array.from(buckets.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([minutesBucket, counts]) => ({ minutesBucket, ...counts }));
+
+  // Trim trailing all-zero buckets (keep at least one)
+  while (result.length > 1 && result[result.length - 1].slowDown === 0 && result[result.length - 1].readyToMove === 0) {
+    result.pop();
+  }
+
+  return result;
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -299,6 +358,49 @@ export default async function handler(
     return b.engagementScore - a.engagementScore;
   });
 
+  // ── Aggregated stats ───────────────────────────────────────────────────────
+  const messageCounts = await prisma.chatMessage.groupBy({
+    by: ['userId'],
+    where: { classId: targetClass.id },
+    _count: { id: true },
+  });
+  const totalMessages = messageCounts.reduce((sum, m) => sum + m._count.id, 0);
+  const totalHandRaises = Object.values(handRaiseCounts).reduce((sum, n) => sum + n, 0);
+
+  const studentsWithDuration = students.filter((s) => s.durationMinutes !== null);
+  const avgDurationMinutes = studentsWithDuration.length > 0
+    ? Math.round((studentsWithDuration.reduce((sum, s) => sum + (s.durationMinutes ?? 0), 0) / studentsWithDuration.length) * 10) / 10
+    : 0;
+  const absentMoreThan50Percent = students.filter(
+    (s) => s.durationMinutes !== null && s.durationMinutes < targetClass.duration * 0.5,
+  ).length;
+
+  const paceSignalTimeline = bucketPaceSignals(paceSignals, targetClass.createdAt, targetClass.duration);
+
+  const leaveEvents: LeaveEvent[] = checkIns.map((ci) => {
+    const durationMinutes = ci.checkOutTime
+      ? Math.round((ci.checkOutTime.getTime() - ci.createdAt.getTime()) / 60000)
+      : null;
+    return {
+      anonymousName: ci.anonymousName,
+      checkInTime: ci.createdAt.toISOString(),
+      checkOutTime: ci.checkOutTime?.toISOString() ?? null,
+      durationMinutes,
+      leftEarly: durationMinutes !== null && durationMinutes < targetClass.duration * 0.95,
+    };
+  });
+  leaveEvents.sort((a, b) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
+
+  const aggregated: AggregatedStats = {
+    totalStudents: students.length,
+    avgDurationMinutes,
+    absentMoreThan50Percent,
+    avgMessagesPerStudent: students.length > 0 ? Math.round((totalMessages / students.length) * 10) / 10 : 0,
+    avgHandRaisesPerStudent: students.length > 0 ? Math.round((totalHandRaises / students.length) * 10) / 10 : 0,
+    paceSignalTimeline,
+    leaveEvents,
+  };
+
   return res.status(200).json({
     students,
     paceAggregate,
@@ -310,6 +412,7 @@ export default async function handler(
       duration: targetClass.duration,
       color: targetClass.color,
     },
+    aggregated,
     templates: templateOptions,
   });
 }
