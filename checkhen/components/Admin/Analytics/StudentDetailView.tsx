@@ -1,6 +1,7 @@
-import { Box, Card, Group, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
+import { Box, Card, Group, SimpleGrid, Stack, Table, Text, Title, Tooltip } from '@mantine/core';
 import { BarChart, DonutChart } from '@mantine/charts';
 import { useMantineTheme } from '@mantine/core';
+import { Info } from 'lucide-react';
 
 type StudentSummary = {
   email: string;
@@ -143,7 +144,26 @@ export function StudentDetailView({ data, accentColor }: Props) {
               <Table.Th>{data.allTime ? 'Total Duration' : 'Duration'}</Table.Th>
               <Table.Th>Hand Raises</Table.Th>
               <Table.Th>Pace Signal</Table.Th>
-              <Table.Th>Score</Table.Th>
+              <Table.Th>
+                <Group gap={4} align="center" wrap="nowrap">
+                  Score
+                  <Tooltip
+                    label={
+                      <div>
+                        <div>Score is out of 100:</div>
+                        <div>• Up to 60pts for time attended</div>
+                        <div>• Up to 30pts for hand raises (6pts each, max 5)</div>
+                        <div>• 10pts for submitting a pace signal</div>
+                      </div>
+                    }
+                    multiline
+                    w={260}
+                    withArrow
+                  >
+                    <Info size={14} style={{ cursor: 'pointer', opacity: 0.5 }} />
+                  </Tooltip>
+                </Group>
+              </Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

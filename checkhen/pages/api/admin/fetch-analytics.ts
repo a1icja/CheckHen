@@ -239,9 +239,9 @@ export default async function handler(
       let engagementScore: number | null = null;
 
       if (!s.hasIncompleteCheckout && s.totalMinutes !== null) {
-        const timeScore = Math.min(s.totalMinutes / totalPlannedMinutes, 1) * 50;
-        const handScore = Math.min(handRaiseCount, 3) * 10;
-        const paceScore = hasPaceSignal ? 20 : 0;
+        const timeScore = Math.min(s.totalMinutes / totalPlannedMinutes, 1) * 60;
+        const handScore = Math.min(handRaiseCount, 5) * 6;
+        const paceScore = hasPaceSignal ? 10 : 0;
         engagementScore = Math.round(timeScore + handScore + paceScore);
       }
 
@@ -333,9 +333,9 @@ export default async function handler(
 
     let engagementScore: number | null = null;
     if (durationMinutes !== null) {
-      const timeScore = Math.min(durationMinutes / targetClass.duration, 1) * 50;
-      const handScore = Math.min(handRaiseCount, 3) * 10;
-      const paceScore = hasPaceSignal ? 20 : 0;
+      const timeScore = Math.min(durationMinutes / targetClass.duration, 1) * 60;
+      const handScore = Math.min(handRaiseCount, 5) * 6;
+      const paceScore = hasPaceSignal ? 10 : 0;
       engagementScore = Math.round(timeScore + handScore + paceScore);
     }
 
