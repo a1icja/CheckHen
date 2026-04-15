@@ -69,25 +69,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     },
   });
 
-  // Map database user IDs to emails and usernames
-  const dbToEmailMap = new Map<string, string>();
-  const dbToUsernameMap = new Map<string, string>();
+  // Map database user IDs to user data
+  const userMap = new Map<string, typeof users[0]>();
   for (const user of users) {
-    dbToEmailMap.set(user.id, user.email);
-    dbToUsernameMap.set(user.id, user.email.split('@')[0]); // Extract username
+    userMap.set(user.id, user);
   }
 
   // Construct the response messages with user details and anonymous names
-  const messages = dbMessages.map((m) => ({
-    id: m.id,
-    message: m.message,
-    anonymousName: m.anonymousName,
-    createdAt: m.createdAt,
-    userName: dbToUsernameMap.get(m.userId) || 'Unknown',
-    user: {
-      email: dbToEmailMap.get(m.userId) || '',
-    },
-  }));
+  const messages = dbMessages.map((m) => {
+    const u = userMap.get(m.userId);
+    return {
+      id: m.id,
+      message: m.message,
+      anonymousName: m.anonymousName,
+      createdAt: m.createdAt,
+      userName: u ? u.email.split('@')[0] : 'Unknown',
+      user: {
+        email: u?.email ?? '',
+        namePronunciation: u?.namePronunciation ?? null,
+        pronouns: u?.pronouns ?? null,
+      },
+    };
+  });
 
   // Respond with the chat messages
   res.status(200).json({ message: JSON.stringify(messages) });

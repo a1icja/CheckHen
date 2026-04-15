@@ -34,6 +34,7 @@ import {
   User,
 } from 'lucide-react';
 import ClassSessionManager from '@/components/Admin/ClassSessionManager/ClassSessionManager';
+import { StudentProfileModal } from '@/components/Admin/StudentProfileModal';
 import { notifications } from '@mantine/notifications';
 import { getSocket } from '@/lib/socket';
 
@@ -57,17 +58,24 @@ type ChatMessage = {
   createdAt: string;
   user: {
     email: string;
+    namePronunciation: string | null;
+    pronouns: string | null;
   };
 };
 
 type AttendanceRecord = {
   id: string;
+  userId: string;
   anonymousName: string | null;
   joinTime: string;
   user: {
     email: string;
     profilePicture: string | null;
     foodAllergies: string | null;
+    displayName: string | null;
+    namePronunciation: string | null;
+    pronouns: string | null;
+    bio: string | null;
   };
 };
 
@@ -90,6 +98,7 @@ export default function AdminDashboard() {
   const [paceSignals, setPaceSignals] = useState({ slowDown: 0, readyToMove: 0 });
   const [leftWidth, setLeftWidth] = useState(280);
   const [rightWidth, setRightWidth] = useState(280);
+  const [profileEmail, setProfileEmail] = useState<string | null>(null);
   const leftStartX = useRef(0);
   const leftStartWidth = useRef(0);
   const rightStartX = useRef(0);
@@ -594,7 +603,12 @@ export default function AdminDashboard() {
                   <Paper key={msg.id} p="sm" radius="md" bg={theme.colors.gray[0]}>
                     <Group justify="space-between" mb={4}>
                       <Group gap="xs">
-                        <Text size="sm" fw={600}>
+                        <Text
+                          size="sm"
+                          fw={600}
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setProfileEmail(msg.user.email)}
+                        >
                           {msg.user.email.split('@')[0]}
                         </Text>
                         <Badge size="xs" variant="light" color="gray">
@@ -604,6 +618,18 @@ export default function AdminDashboard() {
                       <Text size="xs" c="dimmed">
                         {new Date(msg.createdAt).toLocaleTimeString()}
                       </Text>
+                    </Group>
+                    <Group gap={4} mb={4} wrap="wrap">
+                      {msg.user.pronouns && (
+                        <Badge size="xs" color="violet" variant="light">
+                          {msg.user.pronouns}
+                        </Badge>
+                      )}
+                      {msg.user.namePronunciation && (
+                        <Badge size="xs" color="cyan" variant="light">
+                          {msg.user.namePronunciation}
+                        </Badge>
+                      )}
                     </Group>
                     <Text size="sm">{msg.message}</Text>
                   </Paper>
@@ -651,12 +677,19 @@ export default function AdminDashboard() {
                 </Text>
               ) : (
                 attendance.map((record) => (
-                  <Paper key={record.id} p="sm" radius="md" bg={theme.colors.gray[0]}>
+                  <Paper
+                    key={record.id}
+                    p="sm"
+                    radius="md"
+                    bg={theme.colors.gray[0]}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setProfileEmail(record.user.email)}
+                  >
                     <Group gap="sm" align="flex-start">
                       <Avatar src={record.user.profilePicture} size={36} radius="50%" />
                       <Box style={{ flex: 1, minWidth: 0 }}>
                         <Text size="sm" fw={600} truncate>
-                          {record.user.email.split('@')[0]}
+                          {record.user.displayName || record.user.email.split('@')[0]}
                         </Text>
                         <Group justify="space-between" mt={2}>
                           <Badge size="xs" variant="light">
@@ -666,11 +699,23 @@ export default function AdminDashboard() {
                             {new Date(record.joinTime).toLocaleTimeString()}
                           </Text>
                         </Group>
-                        {record.user.foodAllergies && (
-                          <Badge size="xs" color="orange" variant="light" mt={4}>
-                            Allergy: {record.user.foodAllergies}
-                          </Badge>
-                        )}
+                        <Group gap={4} mt={4} wrap="wrap">
+                          {record.user.pronouns && (
+                            <Badge size="xs" color="violet" variant="light">
+                              {record.user.pronouns}
+                            </Badge>
+                          )}
+                          {record.user.namePronunciation && (
+                            <Badge size="xs" color="cyan" variant="light">
+                              {record.user.namePronunciation}
+                            </Badge>
+                          )}
+                          {record.user.foodAllergies && (
+                            <Badge size="xs" color="orange" variant="light">
+                              Allergy: {record.user.foodAllergies}
+                            </Badge>
+                          )}
+                        </Group>
                       </Box>
                     </Group>
                   </Paper>
@@ -681,6 +726,11 @@ export default function AdminDashboard() {
         </Box>
       </Flex>
       )}
+
+      <StudentProfileModal
+        email={profileEmail}
+        onClose={() => setProfileEmail(null)}
+      />
     </Box>
   );
 }

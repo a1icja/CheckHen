@@ -78,7 +78,9 @@ export function StudentDetailView({ data, accentColor }: Props) {
               series={[{ name: 'Duration (min)', color: accentColor }]}
               tickLine="y"
               withTooltip
+              tooltipAnimationDuration={0}
               withLegend={false}
+              xAxisProps={{ angle: -40, textAnchor: 'end', interval: 0, height: 60 }}
             />
           )}
         </Card>
@@ -96,7 +98,9 @@ export function StudentDetailView({ data, accentColor }: Props) {
               series={[{ name: 'Score', color: theme.colors.successGreen[5] }]}
               tickLine="y"
               withTooltip
+              tooltipAnimationDuration={0}
               withLegend={false}
+              xAxisProps={{ angle: -40, textAnchor: 'end', interval: 0, height: 60 }}
             />
           )}
         </Card>
@@ -149,12 +153,12 @@ export function StudentDetailView({ data, accentColor }: Props) {
                   Score
                   <Tooltip
                     label={
-                      <div>
-                        <div>Score is out of 100:</div>
-                        <div>• Up to 60pts for time attended</div>
-                        <div>• Up to 30pts for hand raises (6pts each, max 5)</div>
-                        <div>• 10pts for submitting a pace signal</div>
-                      </div>
+                      <Stack gap={2}>
+                        <Text size="xs" fw={600}>Score is out of 100:</Text>
+                        <Text size="xs">• Up to 60pts for time attended</Text>
+                        <Text size="xs">• Up to 30pts for hand raises (6pts each, max 5)</Text>
+                        <Text size="xs">• 10pts for submitting a pace signal</Text>
+                      </Stack>
                     }
                     multiline
                     w={260}

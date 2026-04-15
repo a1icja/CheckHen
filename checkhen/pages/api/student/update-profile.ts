@@ -13,15 +13,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  const { foodAllergies } = req.body as { foodAllergies?: string };
+  const { foodAllergies, displayName, namePronunciation, pronouns, bio } = req.body as {
+    foodAllergies?: string | null;
+    displayName?: string | null;
+    namePronunciation?: string | null;
+    pronouns?: string | null;
+    bio?: string | null;
+  };
 
-  if (typeof foodAllergies !== 'string' && foodAllergies !== undefined) {
-    return res.status(400).json({ message: 'Invalid foodAllergies value' });
+  if (bio && bio.length > 280) {
+    return res.status(400).json({ message: 'Bio must be 280 characters or fewer' });
   }
 
   await prisma.user.update({
     where: { email: session.user.email },
-    data: { foodAllergies: foodAllergies ?? null },
+    data: {
+      foodAllergies: foodAllergies ?? null,
+      displayName: displayName || null,
+      namePronunciation: namePronunciation || null,
+      pronouns: pronouns || null,
+      bio: bio || null,
+    },
   });
 
   return res.status(200).json({ message: 'Profile updated' });

@@ -80,10 +80,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       anonymousName: checkIn.anonymousName,
       joinTime: checkIn.createdAt,
       handRaiseCount: handRaiseCounts[checkIn.userId] || 0,
+      userId: checkIn.userId,
       user: {
         email: user.email,
         profilePicture: user.profilePicture ?? null,
         foodAllergies: user.foodAllergies ?? null,
+        displayName: user.displayName ?? null,
+        namePronunciation: user.namePronunciation ?? null,
+        pronouns: user.pronouns ?? null,
+        bio: user.bio ?? null,
       },
     });
   }

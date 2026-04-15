@@ -7,14 +7,19 @@ import {
   Button,
   Card,
   Group,
+  SegmentedControl,
   Stack,
   Text,
   Textarea,
+  TextInput,
   Title,
   useMantineTheme,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { GraduationCap, ArrowLeft, Save } from 'lucide-react';
+
+const PRONOUN_OPTIONS = ['she/her', 'he/him', 'they/them', 'Other'];
+const BIO_LIMIT = 280;
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
@@ -23,6 +28,11 @@ export default function ProfilePage() {
 
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [foodAllergies, setFoodAllergies] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [namePronunciation, setNamePronunciation] = useState('');
+  const [pronounsSelection, setPronounsSelection] = useState('');
+  const [customPronouns, setCustomPronouns] = useState('');
+  const [bio, setBio] = useState('');
   const [saving, setSaving] = useState(false);
   const [backHref, setBackHref] = useState('/');
 
@@ -40,18 +50,39 @@ export default function ProfilePage() {
       .then((data) => {
         setProfilePicture(data.profilePicture ?? null);
         setFoodAllergies(data.foodAllergies ?? '');
+        setDisplayName(data.displayName ?? '');
+        setNamePronunciation(data.namePronunciation ?? '');
+        setBio(data.bio ?? '');
+
+        const saved = data.pronouns ?? '';
+        if (PRONOUN_OPTIONS.slice(0, 3).includes(saved)) {
+          setPronounsSelection(saved);
+        } else if (saved) {
+          setPronounsSelection('Other');
+          setCustomPronouns(saved);
+        }
       })
       .catch(() => {
         notifications.show({ title: 'Error', message: 'Could not load profile', color: 'red' });
       });
   }, [status]);
 
+  const effectivePronouns =
+    pronounsSelection === 'Other' ? customPronouns : pronounsSelection;
+
   const handleSave = async () => {
+    if (bio.length > BIO_LIMIT) return;
     setSaving(true);
     const res = await fetch('/api/student/update-profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ foodAllergies: foodAllergies || null }),
+      body: JSON.stringify({
+        foodAllergies: foodAllergies || null,
+        displayName: displayName || null,
+        namePronunciation: namePronunciation || null,
+        pronouns: effectivePronouns || null,
+        bio: bio || null,
+      }),
     });
     setSaving(false);
 
@@ -107,7 +138,7 @@ export default function ProfilePage() {
         padding: theme.spacing.xl,
       }}
     >
-      <Card shadow="lg" padding="xl" radius="md" style={{ maxWidth: 480, width: '100%' }}>
+      <Card shadow="lg" padding="xl" radius="md" style={{ maxWidth: 520, width: '100%' }}>
         <Stack gap="lg">
           <Group justify="space-between">
             <Title order={3}>My Profile</Title>
@@ -127,28 +158,83 @@ export default function ProfilePage() {
             <div>
               <Text fw={600}>{email.split('@')[0]}</Text>
               <Text size="sm" c="dimmed">{email}</Text>
-              <Text size="xs" c="dimmed" mt={4}>Profile picture synced from Google</Text>
             </div>
           </Group>
 
-          {/* Food Allergies */}
+          {/* Display Name */}
+          <TextInput
+            label="Display Name"
+            description="Your preferred name to show instructors (leave blank to use your email)"
+            placeholder={email.split('@')[0]}
+            value={displayName}
+            onChange={(e) => setDisplayName(e.currentTarget.value)}
+          />
+
+          {/* Name Pronunciation */}
+          <TextInput
+            label="How to pronounce your name"
+            placeholder="e.g. a-LEE-sha"
+            value={namePronunciation}
+            onChange={(e) => setNamePronunciation(e.currentTarget.value)}
+          />
+
+          {/* Pronouns */}
           <Stack gap="xs">
-            <Textarea
-              label="Food Allergies"
-              description="Let your instructor know about any food allergies (e.g. peanuts, dairy)"
-              placeholder="None"
-              value={foodAllergies}
-              onChange={(e) => setFoodAllergies(e.currentTarget.value)}
-              autosize
-              minRows={2}
-              maxRows={5}
+            <Text size="sm" fw={500}>Pronouns</Text>
+            <SegmentedControl
+              value={pronounsSelection}
+              onChange={setPronounsSelection}
+              data={PRONOUN_OPTIONS}
+              fullWidth
             />
+            {pronounsSelection === 'Other' && (
+              <TextInput
+                placeholder="Enter your pronouns"
+                value={customPronouns}
+                onChange={(e) => setCustomPronouns(e.currentTarget.value)}
+              />
+            )}
           </Stack>
+
+          {/* Bio */}
+          <Stack gap={4}>
+            <Textarea
+              label="About me"
+              description="Fun facts or what you're looking forward to learning"
+              placeholder="I love hiking and I'm really excited to learn about..."
+              value={bio}
+              onChange={(e) => setBio(e.currentTarget.value)}
+              autosize
+              minRows={3}
+              maxRows={6}
+              error={bio.length > BIO_LIMIT ? `${bio.length - BIO_LIMIT} characters over limit` : undefined}
+            />
+            <Text
+              size="xs"
+              c={bio.length > BIO_LIMIT ? 'red' : bio.length > BIO_LIMIT * 0.9 ? 'orange' : 'dimmed'}
+              ta="right"
+            >
+              {bio.length} / {BIO_LIMIT}
+            </Text>
+          </Stack>
+
+          {/* Food Allergies */}
+          <Textarea
+            label="Food Allergies"
+            description="Let your instructor know about any food allergies (e.g. peanuts, dairy)"
+            placeholder="None"
+            value={foodAllergies}
+            onChange={(e) => setFoodAllergies(e.currentTarget.value)}
+            autosize
+            minRows={2}
+            maxRows={5}
+          />
 
           <Button
             leftSection={<Save size={16} />}
             onClick={handleSave}
             loading={saving}
+            disabled={bio.length > BIO_LIMIT}
           >
             Save Profile
           </Button>
