@@ -1,10 +1,35 @@
-import { Box, Card, Group, SimpleGrid, Stack, Table, Text, Title, Tooltip } from '@mantine/core';
+import { Box, Card, Group, SimpleGrid, Stack, Table, Text, Title, Tooltip, UnstyledButton } from '@mantine/core';
 import { BarChart, DonutChart } from '@mantine/charts';
 import { useMantineTheme } from '@mantine/core';
-import { Info } from 'lucide-react';
+import { useState } from 'react';
+import { Info, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+
+function TooltipCard({ label, rows }: { label: string; rows: { color: string; name: string; value: string }[] }) {
+  return (
+    <div style={{
+      background: 'white',
+      border: '1px solid #dee2e6',
+      borderRadius: 6,
+      padding: '8px 12px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+      minWidth: 140,
+      pointerEvents: 'none',
+    }}>
+      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: '#212529' }}>{label}</div>
+      {rows.map((row) => (
+        <div key={row.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#495057' }}>
+          <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: row.color, flexShrink: 0 }} />
+          <span>{row.name}:</span>
+          <span style={{ fontWeight: 600, color: '#212529' }}>{row.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type StudentSummary = {
   email: string;
+  displayName: string | null;
   anonymousName: string | null;
   checkInTime: string;
   checkOutTime: string | null;
@@ -37,20 +62,76 @@ function formatPaceSignal(signal: string | null) {
 type Props = {
   data: AnalyticsData;
   accentColor: string;
+  attendanceWeight?: number;
+  handRaiseWeight?: number;
+  totalPlannedMinutes?: number;
 };
 
-export function StudentDetailView({ data, accentColor }: Props) {
-  const theme = useMantineTheme();
+type SortKey = 'name' | 'duration' | 'handRaises' | 'score';
+type SortDir = 'asc' | 'desc';
 
-  const durationChartData = data.students.map((s) => ({
-    name: s.anonymousName ?? s.email.split('@')[0],
+function recomputeScore(
+  s: StudentSummary,
+  attendanceWeight: number,
+  handRaiseWeight: number,
+  totalPlannedMinutes: number,
+): number | null {
+  if (s.durationMinutes === null) return null;
+  const attendanceScore = Math.min(s.durationMinutes / totalPlannedMinutes, 1) * attendanceWeight;
+  const handScore = Math.min(s.handRaiseCount, 5) * (handRaiseWeight / 5);
+  return Math.round(attendanceScore + handScore);
+}
+
+export function StudentDetailView({ data, accentColor, attendanceWeight, handRaiseWeight, totalPlannedMinutes }: Props) {
+  const theme = useMantineTheme();
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const useCustomWeights = data.allTime && attendanceWeight !== undefined && handRaiseWeight !== undefined && totalPlannedMinutes !== undefined;
+  const students = useCustomWeights
+    ? data.students.map((s) => ({
+        ...s,
+        engagementScore: recomputeScore(s, attendanceWeight!, handRaiseWeight!, totalPlannedMinutes!),
+      }))
+    : data.students;
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'name' ? 'asc' : 'desc');
+    }
+  }
+
+  function SortHeader({ col, label, children }: { col: SortKey; label?: React.ReactNode; children?: React.ReactNode }) {
+    const active = sortKey === col;
+    const Icon = active ? (sortDir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+    return (
+      <UnstyledButton
+        onClick={() => handleSort(col)}
+        style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600, fontSize: 'inherit', whiteSpace: 'nowrap' }}
+      >
+        {label ?? children}
+        <Icon size={13} style={{ opacity: active ? 1 : 0.35, flexShrink: 0 }} />
+      </UnstyledButton>
+    );
+  }
+
+  const studentLabel = (s: StudentSummary) =>
+    s.displayName || s.email.split('@')[0];
+
+  const durationChartData = students.map((s, i) => ({
+    index: i + 1,
+    name: studentLabel(s),
     'Duration (min)': s.durationMinutes ?? 0,
   }));
 
-  const engagementChartData = data.students
+  const engagementChartData = students
     .filter((s) => s.engagementScore !== null)
-    .map((s) => ({
-      name: s.anonymousName ?? s.email.split('@')[0],
+    .map((s, i) => ({
+      index: i + 1,
+      name: studentLabel(s),
       Score: s.engagementScore as number,
     }));
 
@@ -74,13 +155,27 @@ export function StudentDetailView({ data, accentColor }: Props) {
             <BarChart
               h={220}
               data={durationChartData}
-              dataKey="name"
+              dataKey="index"
               series={[{ name: 'Duration (min)', color: accentColor }]}
               tickLine="y"
               withTooltip
               tooltipAnimationDuration={0}
               withLegend={false}
-              xAxisProps={{ angle: -40, textAnchor: 'end', interval: 0, height: 60 }}
+              xAxisProps={{ tick: false, height: 8 }}
+              yAxisProps={{ tick: { fontSize: 13 } }}
+              tooltipProps={{
+                wrapperStyle: { zIndex: 10, outline: 'none' },
+                content: ({ payload }) => {
+                  if (!payload?.length) return null;
+                  const point = payload[0].payload;
+                  return (
+                    <TooltipCard
+                      label={point.name}
+                      rows={[{ color: accentColor, name: 'Duration', value: `${point['Duration (min)']} min` }]}
+                    />
+                  );
+                },
+              }}
             />
           )}
         </Card>
@@ -94,13 +189,27 @@ export function StudentDetailView({ data, accentColor }: Props) {
             <BarChart
               h={220}
               data={engagementChartData}
-              dataKey="name"
+              dataKey="index"
               series={[{ name: 'Score', color: theme.colors.successGreen[5] }]}
               tickLine="y"
               withTooltip
               tooltipAnimationDuration={0}
               withLegend={false}
-              xAxisProps={{ angle: -40, textAnchor: 'end', interval: 0, height: 60 }}
+              xAxisProps={{ tick: false, height: 8 }}
+              yAxisProps={{ tick: { fontSize: 13 } }}
+              tooltipProps={{
+                wrapperStyle: { zIndex: 10, outline: 'none' },
+                content: ({ payload }) => {
+                  if (!payload?.length) return null;
+                  const point = payload[0].payload;
+                  return (
+                    <TooltipCard
+                      label={point.name}
+                      rows={[{ color: theme.colors.successGreen[5], name: 'Score', value: `${point['Score']} / 100` }]}
+                    />
+                  );
+                },
+              }}
             />
           )}
         </Card>
@@ -141,24 +250,33 @@ export function StudentDetailView({ data, accentColor }: Props) {
         <Table striped highlightOnHover withTableBorder withColumnBorders>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Anonymous Name</Table.Th>
+              <Table.Th><SortHeader col="name" label="Preferred Name" /></Table.Th>
+              {!data.allTime && <Table.Th>Anonymous Name</Table.Th>}
               <Table.Th>Email</Table.Th>
-              <Table.Th>{data.allTime ? 'First Check-In' : 'Check-In'}</Table.Th>
-              <Table.Th>{data.allTime ? 'Last Check-Out' : 'Check-Out'}</Table.Th>
-              <Table.Th>{data.allTime ? 'Total Duration' : 'Duration'}</Table.Th>
-              <Table.Th>Hand Raises</Table.Th>
-              <Table.Th>Pace Signal</Table.Th>
+              {!data.allTime && <Table.Th>Check-In</Table.Th>}
+              {!data.allTime && <Table.Th>Check-Out</Table.Th>}
+              <Table.Th><SortHeader col="duration" label={data.allTime ? 'Total Duration' : 'Duration'} /></Table.Th>
+              <Table.Th><SortHeader col="handRaises" label="Hand Raises" /></Table.Th>
+              {!data.allTime && <Table.Th>Pace Signal</Table.Th>}
               <Table.Th>
                 <Group gap={4} align="center" wrap="nowrap">
-                  Score
+                  <SortHeader col="score" label="Score" />
                   <Tooltip
                     label={
-                      <Stack gap={2}>
-                        <Text size="xs" fw={600}>Score is out of 100:</Text>
-                        <Text size="xs">• Up to 60pts for time attended</Text>
-                        <Text size="xs">• Up to 30pts for hand raises (6pts each, max 5)</Text>
-                        <Text size="xs">• 10pts for submitting a pace signal</Text>
-                      </Stack>
+                      useCustomWeights ? (
+                        <Stack gap={2}>
+                          <Text size="xs" fw={600}>Score is out of 100:</Text>
+                          <Text size="xs">• Up to {attendanceWeight}pts for time attended</Text>
+                          <Text size="xs">• Up to {handRaiseWeight}pts for hand raises (max 5)</Text>
+                        </Stack>
+                      ) : (
+                        <Stack gap={2}>
+                          <Text size="xs" fw={600}>Score is out of 100:</Text>
+                          <Text size="xs">• Up to 60pts for time attended</Text>
+                          <Text size="xs">• Up to 30pts for hand raises (6pts each, max 5)</Text>
+                          <Text size="xs">• 10pts for submitting a pace signal</Text>
+                        </Stack>
+                      )
                     }
                     multiline
                     w={260}
@@ -171,29 +289,46 @@ export function StudentDetailView({ data, accentColor }: Props) {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {data.students.map((s) => {
-              const isShortSession =
-                !data.allTime && s.durationMinutes !== null && s.durationMinutes < 10;
-              return (
-                <Table.Tr
-                  key={s.email}
-                  style={isShortSession ? { backgroundColor: theme.colors.buBlue[0] } : undefined}
-                >
-                  <Table.Td>{s.anonymousName ?? '—'}</Table.Td>
-                  <Table.Td>{s.email}</Table.Td>
-                  <Table.Td>{formatTime(s.checkInTime)}</Table.Td>
-                  <Table.Td>{formatTime(s.checkOutTime)}</Table.Td>
-                  <Table.Td>
-                    {s.durationMinutes !== null ? `${s.durationMinutes} min` : '—'}
-                  </Table.Td>
-                  <Table.Td>{s.handRaiseCount}</Table.Td>
-                  <Table.Td>{formatPaceSignal(s.paceSignal)}</Table.Td>
-                  <Table.Td>
-                    {s.engagementScore !== null ? `${s.engagementScore} / 100` : '—'}
-                  </Table.Td>
-                </Table.Tr>
-              );
-            })}
+            {[...students]
+              .sort((a, b) => {
+                let cmp = 0;
+                if (sortKey === 'name') {
+                  const na = (a.displayName || a.email.split('@')[0]).toLowerCase();
+                  const nb = (b.displayName || b.email.split('@')[0]).toLowerCase();
+                  cmp = na.localeCompare(nb);
+                } else if (sortKey === 'duration') {
+                  cmp = (a.durationMinutes ?? -1) - (b.durationMinutes ?? -1);
+                } else if (sortKey === 'handRaises') {
+                  cmp = a.handRaiseCount - b.handRaiseCount;
+                } else if (sortKey === 'score') {
+                  cmp = (a.engagementScore ?? -1) - (b.engagementScore ?? -1);
+                }
+                return sortDir === 'asc' ? cmp : -cmp;
+              })
+              .map((s) => {
+                const isShortSession =
+                  !data.allTime && s.durationMinutes !== null && s.durationMinutes < 10;
+                return (
+                  <Table.Tr
+                    key={s.email}
+                    style={isShortSession ? { backgroundColor: theme.colors.buBlue[0] } : undefined}
+                  >
+                    <Table.Td>{s.displayName || s.email.split('@')[0]}</Table.Td>
+                    {!data.allTime && <Table.Td>{s.anonymousName ?? '—'}</Table.Td>}
+                    <Table.Td>{s.email}</Table.Td>
+                    {!data.allTime && <Table.Td>{formatTime(s.checkInTime)}</Table.Td>}
+                    {!data.allTime && <Table.Td>{formatTime(s.checkOutTime)}</Table.Td>}
+                    <Table.Td>
+                      {s.durationMinutes !== null ? `${s.durationMinutes} min` : '—'}
+                    </Table.Td>
+                    <Table.Td>{s.handRaiseCount}</Table.Td>
+                    {!data.allTime && <Table.Td>{formatPaceSignal(s.paceSignal)}</Table.Td>}
+                    <Table.Td>
+                      {s.engagementScore !== null ? `${s.engagementScore} / 100` : '—'}
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
           </Table.Tbody>
         </Table>
       </Card>

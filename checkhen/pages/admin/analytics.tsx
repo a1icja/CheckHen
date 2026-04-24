@@ -9,6 +9,7 @@ import {
   Loader,
   Paper,
   Select,
+  Slider,
   Stack,
   Tabs,
   Text,
@@ -69,6 +70,7 @@ type AnalyticsData = {
   allTime?: boolean;
   template?: TemplateOption | null;
   sessionCount?: number;
+  totalPlannedMinutes?: number;
   templates?: TemplateOption[];
 };
 
@@ -84,6 +86,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [selectValue, setSelectValue] = useState<string | null>(null);
+  const [attendanceWeight, setAttendanceWeight] = useState(70);
 
   const fetchAnalytics = async (value?: string | null) => {
     setLoading(true);
@@ -215,6 +218,30 @@ export default function AnalyticsPage() {
           )}
         </Group>
 
+        {data?.allTime && (
+          <Card withBorder mb="md" p="md" style={{ maxWidth: 480 }}>
+            <Text size="sm" fw={600} mb={4}>Engagement Score Weights</Text>
+            <Text size="xs" c="dimmed" mb="md">
+              Attendance: {attendanceWeight}% · Hand Raises: {100 - attendanceWeight}%
+            </Text>
+            <Slider
+              value={attendanceWeight}
+              onChange={setAttendanceWeight}
+              min={0}
+              max={100}
+              step={5}
+              marks={[
+                { value: 0, label: '0%' },
+                { value: 50, label: '50%' },
+                { value: 100, label: '100%' },
+              ]}
+              label={(v) => `Attendance ${v}%`}
+              color={accentColor}
+            />
+            <Text size="xs" c="dimmed" mt="sm">Drag to adjust how much attendance vs. hand raises contribute to the score.</Text>
+          </Card>
+        )}
+
         {loading ? (
           <Stack align="center" mt="xl">
             <Loader />
@@ -244,7 +271,13 @@ export default function AnalyticsPage() {
           </Tabs>
         ) : (
           // All-time mode: no overview tab, just the student detail view
-          <StudentDetailView data={data} accentColor={accentColor} />
+          <StudentDetailView
+            data={data}
+            accentColor={accentColor}
+            attendanceWeight={data.allTime ? attendanceWeight : undefined}
+            handRaiseWeight={data.allTime ? 100 - attendanceWeight : undefined}
+            totalPlannedMinutes={data.totalPlannedMinutes}
+          />
         )}
       </Box>
     </Box>

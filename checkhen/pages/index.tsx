@@ -16,6 +16,7 @@ import {
   Badge,
   Flex,
   TextInput,
+  Tooltip,
   useMantineTheme,
 } from '@mantine/core';
 import {
@@ -346,6 +347,12 @@ export default function HomePage() {
     signOut({ callbackUrl: '/' });
   };
 
+  // Leave the current class without signing out (logo click)
+  const handleLeaveClass = async () => {
+    await fetch('/api/student/check-out', { method: 'POST' });
+    router.push('/join');
+  };
+
   // Handle Enter key in chat input
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -428,19 +435,23 @@ export default function HomePage() {
       <Paper p="md" shadow="sm" withBorder style={{ borderRadius: 0 }}>
         <Group justify="space-between">
           <Group>
-            <Box
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                backgroundColor: theme.colors.buBlue[5],
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <GraduationCap size={20} color="white" />
-            </Box>
+            <Tooltip label="Leave class" withArrow>
+              <Box
+                onClick={handleLeaveClass}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  backgroundColor: theme.colors.buBlue[5],
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+              >
+                <GraduationCap size={20} color="white" />
+              </Box>
+            </Tooltip>
             <div>
               <Title order={3}>CheckHen</Title>
               <Text size="sm" c="dimmed">

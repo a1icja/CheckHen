@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       email: user.email,
       name: username,
       anonymousName: checkIn.anonymousName,
-      joinTime: checkIn.createdAt,
+      joinTime: checkIn.updatedAt ?? checkIn.createdAt,
       handRaiseCount: handRaiseCounts[checkIn.userId] || 0,
       userId: checkIn.userId,
       user: {

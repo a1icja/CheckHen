@@ -85,10 +85,10 @@ export default async function handler(
   // Construct response using email data
   for (const entry of dbCheckInUsers) {
     const user = entry.user;
-    const username = user.email.split('@')[0]; // Extract username from email
+    const name = user.displayName || user.email.split('@')[0];
     resObject.push({
       email: user.email,
-      name: username,
+      name,
       isAck: entry.isAcknowledged,
       handRaiseCount: handRaiseCounts[entry.userId] || 0,
       overallHandRaiseCount: overallHandRaiseCounts[entry.userId] || 0,

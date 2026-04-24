@@ -86,6 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userName: u ? u.email.split('@')[0] : 'Unknown',
       user: {
         email: u?.email ?? '',
+        displayName: u?.displayName ?? null,
         namePronunciation: u?.namePronunciation ?? null,
         pronouns: u?.pronouns ?? null,
       },

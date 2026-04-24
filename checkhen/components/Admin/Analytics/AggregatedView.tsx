@@ -1,6 +1,4 @@
 import { Alert, Badge, Card, Group, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
-import { LineChart } from '@mantine/charts';
-import { useMantineTheme } from '@mantine/core';
 import { Info } from 'lucide-react';
 
 type PaceTimelineBucket = {
@@ -10,6 +8,7 @@ type PaceTimelineBucket = {
 };
 
 type LeaveEvent = {
+  displayName: string | null;
   anonymousName: string | null;
   checkInTime: string;
   checkOutTime: string | null;
@@ -48,16 +47,6 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 }
 
 export function AggregatedView({ aggregated, classDuration }: Props) {
-  const theme = useMantineTheme();
-
-  const timelineData = aggregated.paceSignalTimeline.map((b) => ({
-    minutesBucket: b.minutesBucket,
-    'Slow Down': b.slowDown,
-    'Ready': b.readyToMove,
-  }));
-
-  const hasTimeline = timelineData.some((d) => d['Slow Down'] > 0 || d['Ready'] > 0);
-
   const earlyLeaves = aggregated.leaveEvents.filter((e) => e.leftEarly);
   const stillPresent = aggregated.leaveEvents.filter((e) => e.checkOutTime === null);
 
@@ -93,33 +82,6 @@ export function AggregatedView({ aggregated, classDuration }: Props) {
         />
       </SimpleGrid>
 
-      {/* Pace signal timeline */}
-      <Card>
-        <Title order={5} mb="xs">Pace Signals Over Time</Title>
-        <Text size="xs" c="dimmed" mb="md">
-          When students sent "Slow Down" or "Ready to Move On" signals throughout the session.
-          Spikes at the start may indicate a difficult introduction; spikes at the end may suggest rushing.
-        </Text>
-        {!hasTimeline ? (
-          <Text c="dimmed" size="sm">No pace signals recorded this session.</Text>
-        ) : (
-          <LineChart
-            h={220}
-            data={timelineData}
-            dataKey="minutesBucket"
-            series={[
-              { name: 'Slow Down', color: theme.colors.warning[5] },
-              { name: 'Ready', color: theme.colors.successGreen[5] },
-            ]}
-            xAxisLabel="Minutes into class"
-            yAxisLabel="Signals"
-            withTooltip
-            withDots={false}
-            curveType="monotone"
-          />
-        )}
-      </Card>
-
       {/* Leave / checkout events */}
       <Card p={0}>
         <Stack gap={0}>
@@ -139,12 +101,13 @@ export function AggregatedView({ aggregated, classDuration }: Props) {
             color="blue"
             icon={<Info size={16} />}
           >
-            Rejoin times are not tracked. If a student left and returned, only their departure time is shown here.
+            Check-in time reflects the student&apos;s most recent entry. If a student left and rejoined, their latest check-in time is shown.
           </Alert>
 
           <Table striped highlightOnHover withTableBorder withColumnBorders>
             <Table.Thead>
               <Table.Tr>
+                <Table.Th>Preferred Name</Table.Th>
                 <Table.Th>Anonymous Name</Table.Th>
                 <Table.Th>Check-In</Table.Th>
                 <Table.Th>Check-Out</Table.Th>
@@ -167,6 +130,7 @@ export function AggregatedView({ aggregated, classDuration }: Props) {
 
                 return (
                   <Table.Tr key={i}>
+                    <Table.Td>{e.displayName || e.anonymousName || '—'}</Table.Td>
                     <Table.Td>{e.anonymousName ?? '—'}</Table.Td>
                     <Table.Td>{formatTime(e.checkInTime)}</Table.Td>
                     <Table.Td>{formatTime(e.checkOutTime)}</Table.Td>

@@ -173,7 +173,7 @@ export default function ProfilePage() {
           {/* Name Pronunciation */}
           <TextInput
             label="How to pronounce your name"
-            placeholder="e.g. a-LEE-sha"
+            placeholder="e.g. AL-ex"
             value={namePronunciation}
             onChange={(e) => setNamePronunciation(e.currentTarget.value)}
           />

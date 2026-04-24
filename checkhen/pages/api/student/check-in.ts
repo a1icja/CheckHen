@@ -63,11 +63,11 @@ export default async function handler(
   });
 
   if (dbCheckIn) {
-    // If the student previously checked out, restore their presence
+    // If the student previously checked out, restore their presence and reset checkout time
     if (!dbCheckIn.isPresent) {
       await prisma.checkIn.update({
         where: { id: dbCheckIn.id },
-        data: { isPresent: true },
+        data: { isPresent: true, checkOutTime: null },
       });
     }
     return res.status(200).json({ message: `Already checked in: ${email}` });

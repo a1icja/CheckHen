@@ -42,6 +42,14 @@ async function main() {
     });
     console.log(`Deleted ${testClasses.count} test class(es).`);
 
+    // Delete test ClassTemplates
+    const testTemplates = await prisma.classTemplate.deleteMany({
+      where: { name: { startsWith: '[TEST]' } },
+    });
+    if (testTemplates.count > 0) {
+      console.log(`Deleted ${testTemplates.count} test template(s).`);
+    }
+
     console.log('Done — all test data removed.');
   } finally {
     await prisma.$disconnect();

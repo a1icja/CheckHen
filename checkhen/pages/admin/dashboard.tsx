@@ -15,6 +15,7 @@ import {
   Group,
   Badge,
   Flex,
+  Tooltip,
   useMantineTheme,
   Alert,
   Divider,
@@ -32,6 +33,7 @@ import {
   RefreshCw,
   Plus,
   User,
+  Info,
 } from 'lucide-react';
 import ClassSessionManager from '@/components/Admin/ClassSessionManager/ClassSessionManager';
 import { StudentProfileModal } from '@/components/Admin/StudentProfileModal';
@@ -58,6 +60,7 @@ type ChatMessage = {
   createdAt: string;
   user: {
     email: string;
+    displayName: string | null;
     namePronunciation: string | null;
     pronouns: string | null;
   };
@@ -609,7 +612,7 @@ export default function AdminDashboard() {
                           style={{ cursor: 'pointer' }}
                           onClick={() => setProfileEmail(msg.user.email)}
                         >
-                          {msg.user.email.split('@')[0]}
+                          {msg.user.displayName || msg.user.email.split('@')[0]}
                         </Text>
                         <Badge size="xs" variant="light" color="gray">
                           as {msg.anonymousName || 'Anonymous'}
@@ -666,7 +669,23 @@ export default function AdminDashboard() {
           }}
         >
           <Paper p="md" shadow="xs" withBorder style={{ borderRadius: 0 }}>
-            <Title order={4}>Present Students</Title>
+            <Group gap={4} align="center" wrap="nowrap">
+              <Title order={4}>Present Students</Title>
+              <Tooltip
+                label={
+                  <Stack gap={2}>
+                    <Text size="xs" fw={600}>About check-in time:</Text>
+                    <Text size="xs">Shows the student&apos;s most recent entry time.</Text>
+                    <Text size="xs">If a student leaves and rejoins, only their latest check-in is reflected.</Text>
+                  </Stack>
+                }
+                multiline
+                w={260}
+                withArrow
+              >
+                <Info size={14} style={{ cursor: 'pointer', opacity: 0.5 }} />
+              </Tooltip>
+            </Group>
           </Paper>
 
           <ScrollArea style={{ flex: 1 }} p="md">

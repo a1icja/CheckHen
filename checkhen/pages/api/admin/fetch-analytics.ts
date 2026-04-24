@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 
 type StudentSummary = {
   email: string;
+  displayName: string | null;
   anonymousName: string | null;
   checkInTime: string;
   checkOutTime: string | null;
@@ -27,6 +28,7 @@ type PaceTimelineBucket = {
 };
 
 type LeaveEvent = {
+  displayName: string | null;
   anonymousName: string | null;
   checkInTime: string;
   checkOutTime: string | null;
@@ -54,6 +56,7 @@ type AnalyticsResponse = {
   allTime?: boolean;
   template?: TemplateOption | null;
   sessionCount?: number;
+  totalPlannedMinutes?: number;
   templates?: TemplateOption[];
 };
 
@@ -155,6 +158,7 @@ export default async function handler(
         allTime: true,
         template: { id: template.id, name: template.name, color: template.color },
         sessionCount: 0,
+        totalPlannedMinutes: 0,
         templates: templateOptions,
       });
     }
@@ -185,6 +189,7 @@ export default async function handler(
     // Aggregate per student across all sessions
     const studentMap: Record<string, {
       email: string;
+      displayName: string | null;
       anonymousName: string | null;
       firstCheckIn: string;
       lastCheckOut: string | null;
@@ -201,6 +206,7 @@ export default async function handler(
       if (!studentMap[uid]) {
         studentMap[uid] = {
           email: ci.user.email,
+          displayName: ci.user.displayName ?? null,
           anonymousName: ci.anonymousName,
           firstCheckIn: ci.createdAt.toISOString(),
           lastCheckOut: ci.checkOutTime?.toISOString() ?? null,
@@ -247,6 +253,7 @@ export default async function handler(
 
       return {
         email: s.email,
+        displayName: s.displayName,
         anonymousName: s.anonymousName,
         checkInTime: s.firstCheckIn,
         checkOutTime: s.lastCheckOut,
@@ -272,6 +279,7 @@ export default async function handler(
       allTime: true,
       template: { id: template.id, name: template.name, color: template.color },
       sessionCount: templateClasses.length,
+      totalPlannedMinutes,
       templates: templateOptions,
     });
   }
@@ -341,6 +349,7 @@ export default async function handler(
 
     return {
       email: checkIn.user.email,
+      displayName: checkIn.user.displayName ?? null,
       anonymousName: checkIn.anonymousName,
       checkInTime: checkIn.createdAt.toISOString(),
       checkOutTime: checkIn.checkOutTime?.toISOString() ?? null,
@@ -382,6 +391,7 @@ export default async function handler(
       ? Math.round((ci.checkOutTime.getTime() - ci.createdAt.getTime()) / 60000)
       : null;
     return {
+      displayName: ci.user.displayName ?? null,
       anonymousName: ci.anonymousName,
       checkInTime: ci.createdAt.toISOString(),
       checkOutTime: ci.checkOutTime?.toISOString() ?? null,
