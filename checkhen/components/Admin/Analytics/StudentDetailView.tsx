@@ -1,4 +1,4 @@
-import { Box, Card, Group, SimpleGrid, Stack, Table, Text, Title, Tooltip, UnstyledButton } from '@mantine/core';
+import { Box, Card, Group, SimpleGrid, Slider, Stack, Table, Text, Title, Tooltip, UnstyledButton } from '@mantine/core';
 import { BarChart, DonutChart } from '@mantine/charts';
 import { useMantineTheme } from '@mantine/core';
 import { useState } from 'react';
@@ -65,6 +65,7 @@ type Props = {
   attendanceWeight?: number;
   handRaiseWeight?: number;
   totalPlannedMinutes?: number;
+  onAttendanceWeightChange?: (v: number) => void;
 };
 
 type SortKey = 'name' | 'duration' | 'handRaises' | 'score';
@@ -82,7 +83,7 @@ function recomputeScore(
   return Math.round(attendanceScore + handScore);
 }
 
-export function StudentDetailView({ data, accentColor, attendanceWeight, handRaiseWeight, totalPlannedMinutes }: Props) {
+export function StudentDetailView({ data, accentColor, attendanceWeight, handRaiseWeight, totalPlannedMinutes, onAttendanceWeightChange }: Props) {
   const theme = useMantineTheme();
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -214,27 +215,54 @@ export function StudentDetailView({ data, accentColor, attendanceWeight, handRai
           )}
         </Card>
 
-        {/* Pace signals donut */}
-        <Card>
-          <Title order={5} mb="sm">Pace Signals</Title>
-          {totalPaceSignals === 0 ? (
-            <Text c="dimmed" size="sm">No pace signals recorded</Text>
-          ) : (
-            <Stack align="center" gap="xs">
-              <DonutChart data={donutData} size={160} thickness={28} withTooltip />
-              <Group gap="md">
-                <Group gap={4}>
-                  <Box w={12} h={12} style={{ borderRadius: 2, backgroundColor: theme.colors.warning[5] }} />
-                  <Text size="xs">Slow Down: {data.paceAggregate.slow_down}</Text>
+        {/* Pace signals donut (per-session) or weight sliders (all-time) */}
+        {data.allTime ? (
+          <Card>
+            <Title order={5} mb={4}>Engagement Score Weights</Title>
+            <Text size="xs" c="dimmed" mb="lg">
+              Attendance: {attendanceWeight ?? 70}% · Hand Raises: {100 - (attendanceWeight ?? 70)}%
+            </Text>
+            <Slider
+              value={attendanceWeight ?? 70}
+              onChange={onAttendanceWeightChange}
+              min={0}
+              max={100}
+              step={5}
+              marks={[
+                { value: 0, label: '0%' },
+                { value: 50, label: '50%' },
+                { value: 100, label: '100%' },
+              ]}
+              label={(v) => `Attendance ${v}%`}
+              color={accentColor}
+              mb={40}
+            />
+            <Text size="xs" c="dimmed">
+              Drag to adjust how much attendance vs. hand raises contribute to the score.
+            </Text>
+          </Card>
+        ) : (
+          <Card>
+            <Title order={5} mb="sm">Pace Signals</Title>
+            {totalPaceSignals === 0 ? (
+              <Text c="dimmed" size="sm">No pace signals recorded</Text>
+            ) : (
+              <Stack align="center" gap="xs">
+                <DonutChart data={donutData} size={160} thickness={28} withTooltip />
+                <Group gap="md">
+                  <Group gap={4}>
+                    <Box w={12} h={12} style={{ borderRadius: 2, backgroundColor: theme.colors.warning[5] }} />
+                    <Text size="xs">Slow Down: {data.paceAggregate.slow_down}</Text>
+                  </Group>
+                  <Group gap={4}>
+                    <Box w={12} h={12} style={{ borderRadius: 2, backgroundColor: theme.colors.successGreen[5] }} />
+                    <Text size="xs">Ready: {data.paceAggregate.ready_to_move_on}</Text>
+                  </Group>
                 </Group>
-                <Group gap={4}>
-                  <Box w={12} h={12} style={{ borderRadius: 2, backgroundColor: theme.colors.successGreen[5] }} />
-                  <Text size="xs">Ready: {data.paceAggregate.ready_to_move_on}</Text>
-                </Group>
-              </Group>
-            </Stack>
-          )}
-        </Card>
+              </Stack>
+            )}
+          </Card>
+        )}
       </SimpleGrid>
 
       {/* Detail table */}
@@ -319,7 +347,11 @@ export function StudentDetailView({ data, accentColor, attendanceWeight, handRai
                     {!data.allTime && <Table.Td>{formatTime(s.checkInTime)}</Table.Td>}
                     {!data.allTime && <Table.Td>{formatTime(s.checkOutTime)}</Table.Td>}
                     <Table.Td>
-                      {s.durationMinutes !== null ? `${s.durationMinutes} min` : '—'}
+                      {s.durationMinutes !== null
+                        ? data.allTime && totalPlannedMinutes
+                          ? `${s.durationMinutes} / ${totalPlannedMinutes} min`
+                          : `${s.durationMinutes} min`
+                        : '—'}
                     </Table.Td>
                     <Table.Td>{s.handRaiseCount}</Table.Td>
                     {!data.allTime && <Table.Td>{formatPaceSignal(s.paceSignal)}</Table.Td>}
