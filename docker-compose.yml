@@ -56,6 +56,23 @@ services:
           path: ./socket-server/
     depends_on:
       - db
+  dns:
+    # Lightweight dnsmasq container for closed-internet exam filtering.
+    # Only started during exams via pi-setup/start-exam.sh — not needed for dev.
+    # 4km3/dnsmasq has confirmed ARM/ARM64 builds, suitable for Raspberry Pi 3B+.
+    image: 4km3/dnsmasq:2.90-r2
+    container_name: 490-dns
+    network_mode: host          # must bind to port 53 on wlan0 (Pi AP interface)
+    cap_add:
+      - NET_BIND_SERVICE        # allows binding to port 53 without root
+    cap_drop:
+      - ALL                     # drop everything else — no CAP_NET_ADMIN needed
+    volumes:
+      - ./dns/dnsmasq.conf:/etc/dnsmasq.conf:ro
+      - ./dns/allowlist.conf:/etc/dnsmasq.d/allowlist.conf:ro
+    restart: unless-stopped
+    profiles:
+      - exam                    # only starts with: docker compose --profile exam up -d dns
   # grafana:
   #   image: grafana/grafana-oss:latest
   #   container_name: 490-grafana
