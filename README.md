@@ -63,6 +63,8 @@ This is required for authentication in both development and production. You only
 
 > **Note on BU Google Workspace:** If you're using a BU Google account, the OAuth consent screen may need to be configured for internal use or have BU test users added. If sign-in fails with "access blocked", check the OAuth consent screen settings.
 
+> **Testing with a non-BU email (e.g. Gmail):** Set the OAuth consent screen to **External** and add the email as a test user under **APIs & Services → OAuth consent screen → Test users**. Also add the full email to `ALLOWED_TEST_EMAILS` in your `.env.local`. When you're done testing, remove the email from both places and switch the consent screen back to **Internal** so only BU accounts can sign in.
+
 ---
 
 ### 2. ngrok
@@ -116,7 +118,10 @@ NEXT_PUBLIC_EMAIL_DOMAIN=bu.edu
 # Use ADMIN_EMAILS (not NEXT_PUBLIC_) — this is server-only and must not be exposed to the browser
 ADMIN_EMAILS=alicja,langd0n,aploog
 
-# Optional: comma-separated full email addresses allowed to sign in outside the BU domain (for testing)
+# Optional: comma-separated full email addresses allowed to sign in outside the BU domain (for testing).
+# Remove this line (or leave it blank) to restrict sign-in to BU accounts only.
+# Note: any email listed here must also be added as a test user in the GCP OAuth consent screen
+# (APIs & Services → OAuth consent screen → Test users) while the app is in "External" testing mode.
 ALLOWED_TEST_EMAILS=youremail@gmail.com
 
 # ─── Auth.js (NextAuth) ──────────────────────────────────────────────────────
