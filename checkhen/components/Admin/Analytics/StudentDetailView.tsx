@@ -1,31 +1,8 @@
-import { Box, Card, Group, SimpleGrid, Slider, Stack, Table, Text, Title, Tooltip, UnstyledButton } from '@mantine/core';
-import { BarChart, DonutChart } from '@mantine/charts';
+import { Box, Card, Group, Slider, Stack, Table, Text, Title, Tooltip, UnstyledButton } from '@mantine/core';
 import { useMantineTheme } from '@mantine/core';
 import { useState } from 'react';
 import { Info, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
-
-function TooltipCard({ label, rows }: { label: string; rows: { color: string; name: string; value: string }[] }) {
-  return (
-    <div style={{
-      background: 'white',
-      border: '1px solid #dee2e6',
-      borderRadius: 6,
-      padding: '8px 12px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-      minWidth: 140,
-      pointerEvents: 'none',
-    }}>
-      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: '#212529' }}>{label}</div>
-      {rows.map((row) => (
-        <div key={row.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#495057' }}>
-          <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: row.color, flexShrink: 0 }} />
-          <span>{row.name}:</span>
-          <span style={{ fontWeight: 600, color: '#212529' }}>{row.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+import { StudentProfileModal } from '../StudentProfileModal';
 
 type StudentSummary = {
   email: string;
@@ -68,7 +45,7 @@ type Props = {
   onAttendanceWeightChange?: (v: number) => void;
 };
 
-type SortKey = 'name' | 'duration' | 'handRaises' | 'score';
+type SortKey = 'name' | 'duration' | 'attendance' | 'handRaises' | 'score';
 type SortDir = 'asc' | 'desc';
 
 function recomputeScore(
@@ -87,6 +64,7 @@ export function StudentDetailView({ data, accentColor, attendanceWeight, handRai
   const theme = useMantineTheme();
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [profileEmail, setProfileEmail] = useState<string | null>(null);
 
   const useCustomWeights = data.allTime && attendanceWeight !== undefined && handRaiseWeight !== undefined && totalPlannedMinutes !== undefined;
   const students = useCustomWeights
@@ -119,151 +97,36 @@ export function StudentDetailView({ data, accentColor, attendanceWeight, handRai
     );
   }
 
-  const studentLabel = (s: StudentSummary) =>
-    s.displayName || s.email.split('@')[0];
-
-  const durationChartData = students.map((s, i) => ({
-    index: i + 1,
-    name: studentLabel(s),
-    'Duration (min)': s.durationMinutes ?? 0,
-  }));
-
-  const engagementChartData = students
-    .filter((s) => s.engagementScore !== null)
-    .map((s, i) => ({
-      index: i + 1,
-      name: studentLabel(s),
-      Score: s.engagementScore as number,
-    }));
-
-  const donutData = [
-    { name: 'Slow Down', value: data.paceAggregate.slow_down, color: theme.colors.warning[5] },
-    { name: 'Ready', value: data.paceAggregate.ready_to_move_on, color: theme.colors.successGreen[5] },
-  ];
-  const totalPaceSignals = data.paceAggregate.slow_down + data.paceAggregate.ready_to_move_on;
 
   return (
     <Stack gap="lg">
-      <SimpleGrid cols={3} spacing="md">
-        {/* Duration chart */}
+      {/* Engagement score weights slider (all-time only) */}
+      {data.allTime && (
         <Card>
-          <Title order={5} mb="sm">
-            {data.allTime ? 'Total Attendance (min)' : 'Attendance Duration'}
-          </Title>
-          {durationChartData.length === 0 ? (
-            <Text c="dimmed" size="sm">No data</Text>
-          ) : (
-            <BarChart
-              h={220}
-              data={durationChartData}
-              dataKey="index"
-              series={[{ name: 'Duration (min)', color: accentColor }]}
-              tickLine="y"
-              withTooltip
-              tooltipAnimationDuration={0}
-              withLegend={false}
-              xAxisProps={{ tick: false, height: 8 }}
-              yAxisProps={{ tick: { fontSize: 13 } }}
-              tooltipProps={{
-                wrapperStyle: { zIndex: 10, outline: 'none' },
-                content: ({ payload }) => {
-                  if (!payload?.length) return null;
-                  const point = payload[0].payload;
-                  return (
-                    <TooltipCard
-                      label={point.name}
-                      rows={[{ color: accentColor, name: 'Duration', value: `${point['Duration (min)']} min` }]}
-                    />
-                  );
-                },
-              }}
-            />
-          )}
+          <Title order={5} mb={4}>Engagement Score Weights</Title>
+          <Text size="xs" c="dimmed" mb="lg">
+            Attendance: {attendanceWeight ?? 70}% · Hand Raises: {100 - (attendanceWeight ?? 70)}%
+          </Text>
+          <Slider
+            value={attendanceWeight ?? 70}
+            onChange={onAttendanceWeightChange}
+            min={0}
+            max={100}
+            step={5}
+            marks={[
+              { value: 0, label: '0%' },
+              { value: 50, label: '50%' },
+              { value: 100, label: '100%' },
+            ]}
+            label={(v) => `Attendance ${v}%`}
+            color={accentColor}
+            mb={40}
+          />
+          <Text size="xs" c="dimmed">
+            Drag to adjust how much attendance vs. hand raises contribute to the score.
+          </Text>
         </Card>
-
-        {/* Engagement score chart */}
-        <Card>
-          <Title order={5} mb="sm">Engagement Score</Title>
-          {engagementChartData.length === 0 ? (
-            <Text c="dimmed" size="sm">No data — students must check out for scores to compute</Text>
-          ) : (
-            <BarChart
-              h={220}
-              data={engagementChartData}
-              dataKey="index"
-              series={[{ name: 'Score', color: theme.colors.successGreen[5] }]}
-              tickLine="y"
-              withTooltip
-              tooltipAnimationDuration={0}
-              withLegend={false}
-              xAxisProps={{ tick: false, height: 8 }}
-              yAxisProps={{ tick: { fontSize: 13 } }}
-              tooltipProps={{
-                wrapperStyle: { zIndex: 10, outline: 'none' },
-                content: ({ payload }) => {
-                  if (!payload?.length) return null;
-                  const point = payload[0].payload;
-                  return (
-                    <TooltipCard
-                      label={point.name}
-                      rows={[{ color: theme.colors.successGreen[5], name: 'Score', value: `${point['Score']} / 100` }]}
-                    />
-                  );
-                },
-              }}
-            />
-          )}
-        </Card>
-
-        {/* Pace signals donut (per-session) or weight sliders (all-time) */}
-        {data.allTime ? (
-          <Card>
-            <Title order={5} mb={4}>Engagement Score Weights</Title>
-            <Text size="xs" c="dimmed" mb="lg">
-              Attendance: {attendanceWeight ?? 70}% · Hand Raises: {100 - (attendanceWeight ?? 70)}%
-            </Text>
-            <Slider
-              value={attendanceWeight ?? 70}
-              onChange={onAttendanceWeightChange}
-              min={0}
-              max={100}
-              step={5}
-              marks={[
-                { value: 0, label: '0%' },
-                { value: 50, label: '50%' },
-                { value: 100, label: '100%' },
-              ]}
-              label={(v) => `Attendance ${v}%`}
-              color={accentColor}
-              mb={40}
-            />
-            <Text size="xs" c="dimmed">
-              Drag to adjust how much attendance vs. hand raises contribute to the score.
-            </Text>
-          </Card>
-        ) : (
-          <Card>
-            <Title order={5} mb="sm">Pace Signals</Title>
-            {totalPaceSignals === 0 ? (
-              <Text c="dimmed" size="sm">No pace signals recorded</Text>
-            ) : (
-              <Stack align="center" gap="xs">
-                <DonutChart data={donutData} size={160} thickness={28} withTooltip />
-                <Group gap="md">
-                  <Group gap={4}>
-                    <Box w={12} h={12} style={{ borderRadius: 2, backgroundColor: theme.colors.warning[5] }} />
-                    <Text size="xs">Slow Down: {data.paceAggregate.slow_down}</Text>
-                  </Group>
-                  <Group gap={4}>
-                    <Box w={12} h={12} style={{ borderRadius: 2, backgroundColor: theme.colors.successGreen[5] }} />
-                    <Text size="xs">Ready: {data.paceAggregate.ready_to_move_on}</Text>
-                  </Group>
-                </Group>
-              </Stack>
-            )}
-          </Card>
-        )}
-      </SimpleGrid>
+      )}
 
       {/* Detail table */}
       <Card p={0}>
@@ -283,7 +146,19 @@ export function StudentDetailView({ data, accentColor, attendanceWeight, handRai
               <Table.Th>Email</Table.Th>
               {!data.allTime && <Table.Th>Check-In</Table.Th>}
               {!data.allTime && <Table.Th>Check-Out</Table.Th>}
-              <Table.Th><SortHeader col="duration" label={data.allTime ? 'Total Duration' : 'Duration'} /></Table.Th>
+              <Table.Th>
+                <SortHeader
+                  col="duration"
+                  label={
+                    data.allTime && totalPlannedMinutes
+                      ? `Total Duration (out of ${totalPlannedMinutes} min)`
+                      : data.selectedClass
+                      ? `Duration (out of ${data.selectedClass.duration} min)`
+                      : 'Duration'
+                  }
+                />
+              </Table.Th>
+              <Table.Th><SortHeader col="attendance" label="Attendance %" /></Table.Th>
               <Table.Th><SortHeader col="handRaises" label="Hand Raises" /></Table.Th>
               {!data.allTime && <Table.Th>Pace Signal</Table.Th>}
               <Table.Th>
@@ -326,6 +201,11 @@ export function StudentDetailView({ data, accentColor, attendanceWeight, handRai
                   cmp = na.localeCompare(nb);
                 } else if (sortKey === 'duration') {
                   cmp = (a.durationMinutes ?? -1) - (b.durationMinutes ?? -1);
+                } else if (sortKey === 'attendance') {
+                  const planned = data.allTime ? (totalPlannedMinutes ?? 0) : (data.selectedClass?.duration ?? 0);
+                  const pa = planned > 0 && a.durationMinutes !== null ? a.durationMinutes / planned : -1;
+                  const pb = planned > 0 && b.durationMinutes !== null ? b.durationMinutes / planned : -1;
+                  cmp = pa - pb;
                 } else if (sortKey === 'handRaises') {
                   cmp = a.handRaiseCount - b.handRaiseCount;
                 } else if (sortKey === 'score') {
@@ -341,17 +221,29 @@ export function StudentDetailView({ data, accentColor, attendanceWeight, handRai
                     key={s.email}
                     style={isShortSession ? { backgroundColor: theme.colors.buBlue[0] } : undefined}
                   >
-                    <Table.Td>{s.displayName || s.email.split('@')[0]}</Table.Td>
+                    <Table.Td>
+                      <Text
+                        size="sm"
+                        style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                        onClick={() => setProfileEmail(s.email)}
+                      >
+                        {s.displayName || s.email.split('@')[0]}
+                      </Text>
+                    </Table.Td>
                     {!data.allTime && <Table.Td>{s.anonymousName ?? '—'}</Table.Td>}
                     <Table.Td>{s.email}</Table.Td>
                     {!data.allTime && <Table.Td>{formatTime(s.checkInTime)}</Table.Td>}
                     {!data.allTime && <Table.Td>{formatTime(s.checkOutTime)}</Table.Td>}
                     <Table.Td>
-                      {s.durationMinutes !== null
-                        ? data.allTime && totalPlannedMinutes
-                          ? `${s.durationMinutes} / ${totalPlannedMinutes} min`
-                          : `${s.durationMinutes} min`
-                        : '—'}
+                      {s.durationMinutes !== null ? `${s.durationMinutes} min` : '—'}
+                    </Table.Td>
+                    <Table.Td>
+                      {(() => {
+                        const planned = data.allTime ? (totalPlannedMinutes ?? 0) : (data.selectedClass?.duration ?? 0);
+                        if (s.durationMinutes === null || planned === 0) return '—';
+                        const pct = Math.min(Math.round((s.durationMinutes / planned) * 100), 100);
+                        return `${pct}%`;
+                      })()}
                     </Table.Td>
                     <Table.Td>{s.handRaiseCount}</Table.Td>
                     {!data.allTime && <Table.Td>{formatPaceSignal(s.paceSignal)}</Table.Td>}
@@ -364,6 +256,7 @@ export function StudentDetailView({ data, accentColor, attendanceWeight, handRai
           </Table.Tbody>
         </Table>
       </Card>
+      <StudentProfileModal email={profileEmail} onClose={() => setProfileEmail(null)} />
     </Stack>
   );
 }

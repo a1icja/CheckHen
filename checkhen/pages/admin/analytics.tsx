@@ -237,6 +237,8 @@ export default function AnalyticsPage() {
               <AggregatedView
                 aggregated={data.aggregated!}
                 classDuration={data.selectedClass!.duration}
+                students={data.students}
+                accentColor={accentColor}
               />
             </Tabs.Panel>
 

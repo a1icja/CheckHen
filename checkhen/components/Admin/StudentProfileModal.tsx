@@ -51,7 +51,7 @@ export function StudentProfileModal({ email, onClose }: Props) {
       {!loading && profile && (
         <Stack gap="md">
           <Group gap="md" align="flex-start">
-            <Avatar src={profile.profilePicture} size={64} radius="50%" />
+            <Avatar src={profile.profilePicture} size={160} radius="50%" />
             <Stack gap={4}>
               <Title order={4}>{displayName}</Title>
               <Text size="sm" c="dimmed">{profile.email}</Text>

@@ -517,7 +517,12 @@ export default function AdminDashboard() {
                   <Card key={raise.id} padding="sm">
                     <Stack gap="xs">
                       <Group justify="space-between">
-                        <Text size="sm" fw={600}>
+                        <Text
+                          size="sm"
+                          fw={600}
+                          style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                          onClick={() => setProfileEmail(raise.email)}
+                        >
                           {raise.name}
                         </Text>
                         <Text size="xs" c="dimmed">

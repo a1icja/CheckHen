@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import {
@@ -13,10 +13,11 @@ import {
   Textarea,
   TextInput,
   Title,
+  Tooltip,
   useMantineTheme,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { GraduationCap, ArrowLeft, Save } from 'lucide-react';
+import { GraduationCap, ArrowLeft, Save, Camera } from 'lucide-react';
 
 const PRONOUN_OPTIONS = ['she/her', 'he/him', 'they/them', 'Other'];
 const BIO_LIMIT = 280;
@@ -34,7 +35,9 @@ export default function ProfilePage() {
   const [customPronouns, setCustomPronouns] = useState('');
   const [bio, setBio] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
   const [backHref, setBackHref] = useState('/');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (status !== 'authenticated') return;
@@ -69,6 +72,32 @@ export default function ProfilePage() {
 
   const effectivePronouns =
     pronounsSelection === 'Other' ? customPronouns : pronounsSelection;
+
+  const handlePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const imageBase64 = reader.result as string;
+      setUploadingPicture(true);
+      const res = await fetch('/api/student/upload-profile-picture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64 }),
+      });
+      setUploadingPicture(false);
+      if (res.ok) {
+        setProfilePicture(imageBase64);
+        notifications.show({ title: 'Photo updated', message: 'Profile picture saved', color: 'green' });
+      } else {
+        const { message } = await res.json();
+        notifications.show({ title: 'Upload failed', message: message ?? 'Could not save image', color: 'red' });
+      }
+    };
+    reader.readAsDataURL(file);
+    // reset so picking the same file again triggers onChange
+    e.target.value = '';
+  };
 
   const handleSave = async () => {
     if (bio.length > BIO_LIMIT) return;
@@ -154,7 +183,37 @@ export default function ProfilePage() {
 
           {/* Avatar */}
           <Group gap="md">
-            <Avatar src={profilePicture} size={80} radius="50%" />
+            <Tooltip label="Change photo" position="bottom">
+              <Box
+                style={{ position: 'relative', cursor: 'pointer', display: 'inline-block' }}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Avatar src={profilePicture} size={80} radius="50%" opacity={uploadingPicture ? 0.5 : 1} />
+                <Box
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    background: 'rgba(0,0,0,0.55)',
+                    borderRadius: '50%',
+                    width: 26,
+                    height: 26,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Camera size={14} color="white" />
+                </Box>
+              </Box>
+            </Tooltip>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handlePictureChange}
+            />
             <div>
               <Text fw={600}>{email.split('@')[0]}</Text>
               <Text size="sm" c="dimmed">{email}</Text>

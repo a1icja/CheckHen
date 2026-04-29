@@ -1,5 +1,30 @@
-import { Alert, Badge, Card, Group, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
+import { Alert, Badge, Box, Card, Group, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
+import { BarChart } from '@mantine/charts';
+import { useMantineTheme } from '@mantine/core';
 import { Info } from 'lucide-react';
+
+function TooltipCard({ label, rows }: { label: string; rows: { color: string; name: string; value: string }[] }) {
+  return (
+    <div style={{
+      background: 'white',
+      border: '1px solid #dee2e6',
+      borderRadius: 6,
+      padding: '8px 12px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+      minWidth: 140,
+      pointerEvents: 'none',
+    }}>
+      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: '#212529' }}>{label}</div>
+      {rows.map((row) => (
+        <div key={row.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#495057' }}>
+          <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: row.color, flexShrink: 0 }} />
+          <span>{row.name}:</span>
+          <span style={{ fontWeight: 600, color: '#212529' }}>{row.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type PaceTimelineBucket = {
   minutesBucket: number;
@@ -26,9 +51,18 @@ type AggregatedStats = {
   leaveEvents: LeaveEvent[];
 };
 
+type StudentSummary = {
+  email: string;
+  displayName: string | null;
+  durationMinutes: number | null;
+  engagementScore: number | null;
+};
+
 type Props = {
   aggregated: AggregatedStats;
   classDuration: number;
+  students: StudentSummary[];
+  accentColor: string;
 };
 
 function formatTime(iso: string | null) {
@@ -46,9 +80,26 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   );
 }
 
-export function AggregatedView({ aggregated, classDuration }: Props) {
+export function AggregatedView({ aggregated, classDuration, students, accentColor }: Props) {
+  const theme = useMantineTheme();
   const earlyLeaves = aggregated.leaveEvents.filter((e) => e.leftEarly);
   const stillPresent = aggregated.leaveEvents.filter((e) => e.checkOutTime === null);
+
+  const studentLabel = (s: StudentSummary) => s.displayName || s.email.split('@')[0];
+
+  const durationChartData = students.map((s, i) => ({
+    index: i + 1,
+    name: studentLabel(s),
+    'Duration (min)': s.durationMinutes ?? 0,
+  }));
+
+  const engagementChartData = students
+    .filter((s) => s.engagementScore !== null)
+    .map((s, i) => ({
+      index: i + 1,
+      name: studentLabel(s),
+      Score: s.engagementScore as number,
+    }));
 
   return (
     <Stack gap="lg">
@@ -81,6 +132,129 @@ export function AggregatedView({ aggregated, classDuration }: Props) {
           sub="per student"
         />
       </SimpleGrid>
+
+      {/* Per-student bar charts */}
+      {students.length > 0 && (
+        <SimpleGrid cols={2} spacing="md">
+          <Card>
+            <Title order={5} mb="sm">Attendance Duration</Title>
+            {durationChartData.length === 0 ? (
+              <Text c="dimmed" size="sm">No data</Text>
+            ) : (
+              <BarChart
+                h={220}
+                data={durationChartData}
+                dataKey="index"
+                series={[{ name: 'Duration (min)', color: accentColor }]}
+                tickLine="y"
+                withTooltip
+                tooltipAnimationDuration={0}
+                withLegend={false}
+                xAxisProps={{ tick: false, height: 8 }}
+                yAxisProps={{ tick: { fontSize: 13 } }}
+                tooltipProps={{
+                  wrapperStyle: { zIndex: 10, outline: 'none' },
+                  content: ({ payload }) => {
+                    if (!payload?.length) return null;
+                    const point = payload[0].payload;
+                    return (
+                      <TooltipCard
+                        label={point.name}
+                        rows={[{ color: accentColor, name: 'Duration', value: `${point['Duration (min)']} min` }]}
+                      />
+                    );
+                  },
+                }}
+              />
+            )}
+          </Card>
+
+          <Card>
+            <Title order={5} mb="sm">Engagement Score</Title>
+            {engagementChartData.length === 0 ? (
+              <Text c="dimmed" size="sm">No data — students must check out for scores to compute</Text>
+            ) : (
+              <BarChart
+                h={220}
+                data={engagementChartData}
+                dataKey="index"
+                series={[{ name: 'Score', color: theme.colors.successGreen[5] }]}
+                tickLine="y"
+                withTooltip
+                tooltipAnimationDuration={0}
+                withLegend={false}
+                xAxisProps={{ tick: false, height: 8 }}
+                yAxisProps={{ tick: { fontSize: 13 } }}
+                tooltipProps={{
+                  wrapperStyle: { zIndex: 10, outline: 'none' },
+                  content: ({ payload }) => {
+                    if (!payload?.length) return null;
+                    const point = payload[0].payload;
+                    return (
+                      <TooltipCard
+                        label={point.name}
+                        rows={[{ color: theme.colors.successGreen[5], name: 'Score', value: `${point['Score']} / 100` }]}
+                      />
+                    );
+                  },
+                }}
+              />
+            )}
+          </Card>
+        </SimpleGrid>
+      )}
+
+      {/* Pace signal timeline */}
+      {aggregated.paceSignalTimeline.length > 0 && (
+        <Card>
+          <Title order={5} mb="xs">Pace Signals Over Time</Title>
+          <Text size="xs" c="dimmed" mb="md">Signals submitted per {5}-minute window</Text>
+          <BarChart
+            h={200}
+            data={aggregated.paceSignalTimeline.map((b) => ({
+              label: `${b.minutesBucket}m`,
+              'Slow Down': b.slowDown,
+              'Ready': b.readyToMove,
+            }))}
+            dataKey="label"
+            series={[
+              { name: 'Slow Down', color: theme.colors.warning[5] },
+              { name: 'Ready', color: theme.colors.successGreen[5] },
+            ]}
+            tickLine="y"
+            withTooltip
+            tooltipAnimationDuration={0}
+            xAxisProps={{ tick: { fontSize: 11 } }}
+            yAxisProps={{ tick: { fontSize: 11 }, allowDecimals: false }}
+            tooltipProps={{
+              wrapperStyle: { zIndex: 10, outline: 'none' },
+              content: ({ payload }) => {
+                if (!payload?.length) return null;
+                const point = payload[0].payload;
+                return (
+                  <TooltipCard
+                    label={`At ${point.label}`}
+                    rows={[
+                      { color: theme.colors.warning[5], name: 'Slow Down', value: String(point['Slow Down']) },
+                      { color: theme.colors.successGreen[5], name: 'Ready', value: String(point['Ready']) },
+                    ]}
+                  />
+                );
+              },
+            }}
+          />
+          <Group gap="md" mt="xs">
+            <Group gap={4}>
+              <Box w={12} h={12} style={{ borderRadius: 2, backgroundColor: theme.colors.warning[5] }} />
+              <Text size="xs">Slow Down: {aggregated.paceSignalTimeline.reduce((s, b) => s + b.slowDown, 0)}</Text>
+            </Group>
+            <Group gap={4}>
+              <Box w={12} h={12} style={{ borderRadius: 2, backgroundColor: theme.colors.successGreen[5] }} />
+              <Text size="xs">Ready: {aggregated.paceSignalTimeline.reduce((s, b) => s + b.readyToMove, 0)}</Text>
+            </Group>
+          </Group>
+        </Card>
+      )}
 
       {/* Leave / checkout events */}
       <Card p={0}>

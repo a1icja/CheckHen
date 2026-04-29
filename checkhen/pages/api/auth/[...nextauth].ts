@@ -37,10 +37,10 @@ export const authOptions = {
       const adminEmails = process.env.ADMIN_EMAILS?.split(',')
         .map((e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`) || [];
 
-      // Upsert user and sync profile picture from Google
+      // On first sign-in seed profile picture from Google; on subsequent sign-ins preserve any custom upload
       await prisma.user.upsert({
         where: { email: user.email },
-        update: { profilePicture: user.image ?? undefined },
+        update: {},
         create: {
           email: user.email,
           profilePicture: user.image ?? undefined,
