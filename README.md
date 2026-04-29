@@ -14,6 +14,8 @@ CheckHen is a real-time classroom engagement tool for BU courses. It lets studen
 - [First-Time Database Setup](#first-time-database-setup)
 - [Admin Access](#admin-access)
 - [Pages Overview](#pages-overview)
+- [Analytics Dashboard](#analytics-dashboard)
+- [Test Data / Seed Scripts](#test-data--seed-scripts)
 - [Running on a Raspberry Pi](#running-on-a-raspberry-pi)
 
 ---
@@ -111,10 +113,11 @@ DATABASE_URL=postgresql://ds490:ds490-secure-password@127.0.0.1:5432/postgres
 NEXT_PUBLIC_EMAIL_DOMAIN=bu.edu
 
 # Comma-separated BU email prefixes (everything before @bu.edu) that get admin access
-NEXT_PUBLIC_ADMIN_EMAILS=alicja,langd0n,aploog
+# Use ADMIN_EMAILS (not NEXT_PUBLIC_) — this is server-only and must not be exposed to the browser
+ADMIN_EMAILS=alicja,langd0n,aploog
 
-# Optional: a test student email prefix for development
-NEXT_PUBLIC_TEST_STUDENT_EMAIL=teststudent
+# Optional: comma-separated full email addresses allowed to sign in outside the BU domain (for testing)
+ALLOWED_TEST_EMAILS=youremail@gmail.com
 
 # ─── Auth.js (NextAuth) ──────────────────────────────────────────────────────
 # Generate with: openssl rand -base64 32
@@ -188,6 +191,8 @@ cd checkhen
 yarn dev
 ```
 
+> **OAuth "state mismatch" errors?** This is a known NextAuth v4 + Google PKCE timing issue in hot-reload mode — state cookies set during OAuth sometimes don't survive the redirect when Next.js reloads mid-auth. Use `yarn build && yarn start` instead of `yarn dev` if you hit this. See [Known Issues](#known-issues).
+
 The app is now available at:
 - `http://localhost:3000` (always)
 - `https://checkhen.ngrok.io` (if ngrok is running)
@@ -242,7 +247,7 @@ This builds and starts:
 
 ### Step 3: Access the app
 
-Open `http://bu.checkhen.com:3000` (or your actual production URL) in a browser.
+Open `http://bu.checkhen.com:3000`, checkhen.ngrok.io, (or your actual production URL) in a browser.
 
 ### Step 4: Stop all services
 
@@ -277,14 +282,16 @@ npx prisma migrate deploy
 
 ## Admin Access
 
-Admin access is determined by the `NEXT_PUBLIC_ADMIN_EMAILS` environment variable. It holds a comma-separated list of BU email prefixes (the part before `@bu.edu`).
+Admin access is determined by the `ADMIN_EMAILS` environment variable. It holds a comma-separated list of BU email prefixes (the part before `@bu.edu`).
 
 For example:
 ```
-NEXT_PUBLIC_ADMIN_EMAILS=alicja,langd0n,aploog
+ADMIN_EMAILS=alicja,langd0n,aploog
 ```
 
 This grants admin access to `alicja@bu.edu`, `langd0n@bu.edu`, and `aploog@bu.edu`. All other `@bu.edu` users are treated as students.
+
+> **Security note:** Use `ADMIN_EMAILS` (not `NEXT_PUBLIC_ADMIN_EMAILS`). Variables prefixed with `NEXT_PUBLIC_` are embedded in the browser bundle and visible to anyone — admin email prefixes should stay server-only.
 
 All routes under `/admin/*` are protected by middleware and redirect unauthenticated users to sign in.
 
@@ -295,19 +302,23 @@ All routes under `/admin/*` are protected by middleware and redirect unauthentic
 ### Student Pages
 | Page | Path | Description |
 |---|---|---|
-| Home / Check-in | `/` | Sign in, check into the active class, get your anonymous name |
+| Lobby | `/join` | Landing page after sign-in; shows active classes or "no class active"; students join from here |
+| Home / Check-in | `/` | Check into the active class and receive your anonymous name |
 | Student Dashboard | `/student` | Raise your hand, send chat messages, signal pace |
-| Chat | `/chat` | View and send chat messages |
+| Chat | `/chat` | View and send class chat messages |
+| Profile | `/profile` | Set preferred name, pronouns, bio, fun fact, allergies, and profile picture |
 
 ### Admin Pages
 | Page | Path | Description |
 |---|---|---|
+| Lobby | `/join` | Same lobby; instructors see a button to create a new class |
 | Dashboard | `/admin/dashboard` | Start/end class, view check-ins, manage hand raises, monitor pace signals |
 | Admin Chat | `/admin/chat` | View all student chat messages |
+| Analytics | `/admin/analytics` | Per-session and all-time participation metrics; see [Analytics Dashboard](#analytics-dashboard) |
 
 ### Anonymous Names
 
-When a student checks into a class, they are automatically assigned an anonymous name (e.g., "Swift Panda", "Calm Otter"). This name is consistent for the student within a class session and is used in chat and hand raise displays so the instructor can distinguish students without seeing real names.
+When a student checks into a class, they are automatically assigned an anonymous name in the format **positive adjective + animal** (e.g., "Swift Panda", "Calm Otter"). All word lists use only positive adjectives — no negative words. This name is consistent for the student within a class session and is used in chat and hand raise displays so the instructor can distinguish students without seeing real names.
 
 ### Pace Signals
 
@@ -316,6 +327,45 @@ Students can send one of two pace signals:
 - **Ready to move on** — the student is ready for the next topic
 
 The admin dashboard shows a live count of each signal. Admins can reset the counts at any time.
+
+---
+
+## Analytics Dashboard
+
+The analytics page (`/admin/analytics`) has two views:
+
+**Per-session view** — select a specific class session to see:
+- Each student's duration, hand raise count, pace signals, and engagement score
+- Sortable columns: Name (alphabetical), Duration, Hand Raises, Score
+- Hover over bars in the pace signal chart to see student names
+
+**All-sessions view** — aggregated across all sessions for a class template:
+- Shows preferred name, email, total duration, total hand raises, and cumulative score
+- Anonymous students and one-off columns (check-in/out times, pace signals) are omitted
+
+**Engagement score** — displayed per student, max 100 points:
+- Attendance: up to 50 pts (timestamped check-in)
+- Hand raises: up to 30 pts (10 pts each, capped at 3)
+- Pace signal participation: up to 20 pts
+
+Hover the info icon (ⓘ) next to the score header in the UI for an explanation.
+
+---
+
+## Test Data / Seed Scripts
+
+To populate the app with realistic fake data for testing the analytics dashboard:
+
+```bash
+cd checkhen
+
+# Create a ClassTemplate and N sessions (spaced weekly), each with fake students,
+# check-ins, hand raises, and pace signals
+yarn seed --sessions=5
+
+# Remove all generated test data
+yarn seed:clean
+```
 
 ---
 
@@ -328,49 +378,49 @@ You can run CheckHen on a Raspberry Pi 3B+ or better. This is useful for running
 - USB WiFi dongle that supports AP mode
 - microSD card with Raspberry Pi OS installed
 
-### Steps
+The `pi-setup/` directory contains shell scripts that automate the full Pi configuration.
 
-**1. Set up RaspAP:**
-- Install RaspAP by following the [RaspAP documentation](https://docs.raspap.com/).
-- Configure it as a WiFi access point so classroom devices can connect.
+### First-time setup (run once)
 
-**2. Install Docker:**
-```bash
-sudo apt update && sudo apt upgrade -y
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker pi
-# Log out and back in for group changes to take effect
-```
-
-**3. Clone and run CheckHen:**
 ```bash
 git clone https://github.com/a1icja/checkhen.git
 cd checkhen
+sudo ./pi-setup/install.sh
 ```
 
-Set your environment variables (see [Production Mode](#production-mode)), then:
+`install.sh` installs `hostapd` and Docker, copies the systemd unit files, and makes the exam scripts executable. After it finishes, follow the printed instructions:
+
+1. Edit `/etc/hostapd/hostapd-exam.conf` — set your SSID and passphrase.
+2. Edit `dns/allowlist.conf` — update the `checkhen.local` IP to match your Pi's `wlan0` address (`ip addr show wlan0`).
+3. Set your environment variables and start the app (see [Production Mode](#production-mode)):
+   ```bash
+   docker compose up --build -d
+   ```
+
+### Starting and stopping exam mode
+
+Exam mode brings up the WiFi access point, NAT rules, and DNS filter — students connected to the Pi's network can only reach CheckHen.
+
 ```bash
-docker compose up --build -d
+# Start exam mode (AP + DNS filtering)
+sudo ./pi-setup/start-exam.sh
+
+# Stop exam mode
+sudo ./pi-setup/stop-exam.sh
 ```
 
 **4. Access the app:**
-Connect to the Raspberry Pi's WiFi network. Navigate to `http://<raspberry-pi-ip>:3000` in a browser.
-
-> If you've configured a local DNS (e.g., via Pi-hole) to point `checkhen.com` to the Pi's IP, you can use that hostname instead.
-
-### Using Pi-hole for Website Blocking
-
-If you want students connected to the Pi's network to only access CheckHen and nothing else:
-
-1. Install [Pi-hole](https://pi-hole.net/) on the Raspberry Pi.
-2. In the Pi-hole admin interface, add a wildcard blacklist entry (`*`) to block all domains.
-3. Whitelist the domains you need: `checkhen.com` (or the Pi's IP), and `accounts.google.com` (required for Google OAuth sign-in).
-4. Set Pi-hole as the DHCP/DNS server and disable RaspAP's DHCP server to route all DNS through Pi-hole.
+Connect to the Raspberry Pi's WiFi network and navigate to `http://<pi-wlan0-ip>:3000` in a browser.
 
 ---
 
 ## Known Issues
 
 - **Admin dashboard socket connection:** The admin dashboard may require a manual page refresh after first load to fully connect to the socket server.
-- **Grafana:** Grafana is currently disabled in `docker-compose.yml` due to a datasource UID issue. Configuration files are preserved in `grafana/` for future use.
+
+- **NextAuth PKCE / hot-reload bug:** State cookies set during OAuth can fail to survive the redirect when Next.js hot-reloads mid-auth. If you see a "state mismatch" or similar error during sign-in in `yarn dev`, use `yarn build && yarn start` instead.
+
+- **Docker rebuild migrations:** After running `docker compose up --build`, apply any pending migrations inside the container:
+  ```bash
+  docker exec 490-test npx prisma migrate dev --name add_performance_indexes
+  ```
