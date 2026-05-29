@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { clerkClient, getAuth } from '@clerk/nextjs/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
 
 type ResponseData = {
@@ -12,16 +13,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  // Authenticate the user using Clerk
-  const { userId } = getAuth(req);
-  if (!userId) {
+  // Get authenticated session
+  const session = await getServerSession(req, res, authOptions);
+  if (!session?.user?.email) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  // Find the user in the database
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',')
+    .map((e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`) || [];
+  if (!adminEmails.includes(session.user.email)) return res.status(403).json({ message: 'Forbidden: Admin only' });
+
+  // Find the user in the database by email
   const dbCheckInUser = await prisma.user.findFirst({
     where: {
-      clerk_id: userId,
+      email: session.user.email,
     },
   });
   if (!dbCheckInUser) {
@@ -70,20 +75,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   if (!user) return res.status(500).json({ message: 'No users found' });
 
-  // Fetch user details from Clerk
-  const client = await clerkClient();
-  const clerkUsers = await client.users.getUserList({
-    userId: [user.clerk_id]
-  });
-
-  const clerkUser = clerkUsers.data.find((clerkUser) => clerkUser.id === user.clerk_id);
-
-  // Construct the response message
+  // Construct the response message using email data
+  const username = user.email.split('@')[0];
   const message = {
     id: dbMessage.id,
     message: dbMessage.message,
-    clerkId: clerkUser?.id,
-    userName: clerkUser?.firstName || 'Unknown',
+    userName: username,
   };
 
   // Respond with the message

@@ -1,6 +1,7 @@
-import { clerkClient } from '@clerk/nextjs/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
-import type { NextApiRequest, NextApiResponse } from 'next'
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 type ResponseData = {
   message: string
@@ -14,6 +15,13 @@ export default async function handler(
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method Not Allowed" });
   }
+
+  const session = await getServerSession(req, res, authOptions);
+  if (!session?.user?.email) return res.status(401).json({ message: 'Unauthorized' });
+
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',')
+    .map((e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`) || [];
+  if (!adminEmails.includes(session.user.email)) return res.status(403).json({ message: 'Forbidden: Admin only' });
 
   // Fetch the most recent class
   const currentClass = await prisma.class.findFirst({
@@ -74,14 +82,13 @@ export default async function handler(
 
   const resObject = [];
 
-  // Fetch user details from Clerk
-  const client = await clerkClient();
-
+  // Construct response using email data
   for (const entry of dbCheckInUsers) {
-    const clerkUser = await client.users.getUser(entry.user.clerk_id);
+    const user = entry.user;
+    const name = user.displayName || user.email.split('@')[0];
     resObject.push({
-      email: clerkUser.primaryEmailAddress?.emailAddress,
-      name: clerkUser.fullName,
+      email: user.email,
+      name,
       isAck: entry.isAcknowledged,
       handRaiseCount: handRaiseCounts[entry.userId] || 0,
       overallHandRaiseCount: overallHandRaiseCounts[entry.userId] || 0,

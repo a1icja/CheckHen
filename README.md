@@ -1,224 +1,431 @@
 # CheckHen
 
-CheckHen is a web application designed for managing class sessions, student check-ins, and real-time communication using Clerk for authentication and Prisma for database management.
+CheckHen is a real-time classroom engagement tool for BU courses. It lets students check in, raise virtual hands, send chat messages, and signal pace preferences — all anonymously. Instructors get a live admin dashboard to monitor participation and pace.
 
 ## Table of Contents
-- [Setup](#setup)
+
+- [Tech Stack](#tech-stack)
+- [External Services Setup](#external-services-setup)
+  - [Google Cloud Console (OAuth)](#1-google-cloud-console-oauth)
+  - [ngrok](#2-ngrok)
 - [Environment Variables](#environment-variables)
-- [Running the Project](#running-the-project)
-  - [Development Mode](#development-mode)
-  - [Production Mode](#production-mode)
-  - [Running on a Raspberry Pi](#running-on-a-raspberry-pi)
+- [Development Mode](#development-mode)
+- [Production Mode](#production-mode)
+- [First-Time Database Setup](#first-time-database-setup)
+- [Admin Access](#admin-access)
 - [Pages Overview](#pages-overview)
+- [Analytics Dashboard](#analytics-dashboard)
+- [Test Data / Seed Scripts](#test-data--seed-scripts)
+- [Running on a Raspberry Pi](#running-on-a-raspberry-pi)
 
 ---
 
-## Setup
+## Tech Stack
 
-### Prerequisites
-1. Install [Node.js](https://nodejs.org/) (v18 or higher).
-2. Install [Yarn](https://yarnpkg.com/) (v4 or higher).
-3. Install [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/).
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15 (Pages Router) |
+| Authentication | Auth.js v4 (NextAuth) with Google OAuth |
+| Database ORM | Prisma 6 |
+| UI Library | Mantine 7 |
+| Real-time | Socket.io (server on port 6060) |
+| Database | PostgreSQL 13 |
+| Containerization | Docker + Docker Compose |
+| Package Manager | Yarn 4 |
 
-### Steps
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-repo/checkhen.git
-   cd checkhen
+---
+
+## External Services Setup
+
+### 1. Google Cloud Console (OAuth)
+
+This is required for authentication in both development and production. You only need to do this once, but you must add redirect URIs for every URL you plan to run the app from.
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com/) and create a new project (or select an existing one).
+2. In the left menu, go to **APIs & Services** > **Library**. Search for and enable the **Google+ API** (or **Google Identity**).
+3. Go to **APIs & Services** > **Credentials**.
+4. Click **Create Credentials** > **OAuth 2.0 Client IDs**.
+5. Set the Application type to **Web application**.
+6. Under **Authorized redirect URIs**, add all of the following that apply to you:
+
+   ```
+   # Always add for local dev (plain localhost):
+   http://localhost:3000/api/auth/callback/google
+
+   # Add if using ngrok for dev:
+   https://checkhen.ngrok.io/api/auth/callback/google
+
+   # Add for production:
+   http://bu.checkhen.com:3000/api/auth/callback/google
    ```
 
-2. Install dependencies:
-   ```bash
-   yarn install
-   ```
+7. Click **Create**. You'll receive a **Client ID** and **Client Secret** — save these, you'll need them in your `.env.local`.
 
-3. Set up a Clerk account:
-   - Go to [Clerk](https://clerk.dev/) and create an account.
-   - Create a new Clerk application.
-   - Obtain your **Publishable Key** and **Secret Key** from the Clerk dashboard.
+> **Note on BU Google Workspace:** If you're using a BU Google account, the OAuth consent screen may need to be configured for internal use or have BU test users added. If sign-in fails with "access blocked", check the OAuth consent screen settings.
+
+> **Testing with a non-BU email (e.g. Gmail):** Set the OAuth consent screen to **External** and add the email as a test user under **APIs & Services → OAuth consent screen → Test users**. Also add the full email to `ALLOWED_TEST_EMAILS` in your `.env.local`. When you're done testing, remove the email from both places and switch the consent screen back to **Internal** so only BU accounts can sign in.
+
+---
+
+### 2. ngrok
+
+ngrok creates a public HTTPS tunnel to your local machine. This is needed when:
+- You want to test on a phone or tablet (they can't reach `localhost`)
+- You're testing from another computer on a different network
+- You've configured Google OAuth to require HTTPS (some configurations)
+
+**Setup (one-time):**
+
+1. Sign up at [ngrok.com](https://ngrok.com/) and install the CLI.
+2. Authenticate your ngrok installation:
+   ```bash
+   ngrok config add-authtoken <your-token>
+   ```
+3. Reserve a static domain. The project is configured to use `checkhen.ngrok.io` — you can reserve a custom static domain on the ngrok dashboard under **Domains**.
+
+**Starting ngrok (every dev session where you need it):**
+
+```bash
+ngrok http --url=checkhen.ngrok.io 3000
+```
+
+This tunnels `https://checkhen.ngrok.io` → `http://localhost:3000`.
+
+If you have the tunnel name saved in your local ngrok config file (`~/.config/ngrok/ngrok.yml`), you can also use the shorthand:
+
+```bash
+ngrok start checkhen
+```
+
+> If you only need to test on your own machine, you can skip ngrok entirely and just use `http://localhost:3000`.
 
 ---
 
 ## Environment Variables
 
-Create a `.env.local` file in the `checkhen` directory with the following variables:
-
-- `DATABASE_URL`: Connection string for the PostgreSQL database.
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk publishable key for frontend authentication.
-- `CLERK_SECRET_KEY`: Clerk secret key for backend authentication.
-- `NEXT_PUBLIC_EMAIL_DOMAIN`: Allowed email domain for user authentication.
-- `NEXT_PUBLIC_ADMIN_EMAILS`: Comma-separated list of admin email prefixes.
-
-Example:
+Create a file called `.env.local` inside the `checkhen/` directory. Do **not** commit this file — it contains secrets.
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<your-clerk-publishable-key>
-CLERK_SECRET_KEY=<your-clerk-secret-key>
+# ─── Database ────────────────────────────────────────────────────────────────
+# For local dev (connects to the Docker db container via localhost)
+DATABASE_URL=postgresql://ds490:ds490-secure-password@127.0.0.1:5432/postgres
+
+# ─── Email / Admin Config ────────────────────────────────────────────────────
+# Only users with this email domain can sign in
 NEXT_PUBLIC_EMAIL_DOMAIN=bu.edu
-NEXT_PUBLIC_ADMIN_EMAILS=alicja,langd0n,pawel
+
+# Comma-separated BU email prefixes (everything before @bu.edu) that get admin access
+# Use ADMIN_EMAILS (not NEXT_PUBLIC_) — this is server-only and must not be exposed to the browser
+ADMIN_EMAILS=alicja,langd0n,aploog
+
+# Optional: comma-separated full email addresses allowed to sign in outside the BU domain (for testing).
+# Remove this line (or leave it blank) to restrict sign-in to BU accounts only.
+# Note: any email listed here must also be added as a test user in the GCP OAuth consent screen
+# (APIs & Services → OAuth consent screen → Test users) while the app is in "External" testing mode.
+ALLOWED_TEST_EMAILS=youremail@gmail.com
+
+# ─── Auth.js (NextAuth) ──────────────────────────────────────────────────────
+# Generate with: openssl rand -base64 32
+AUTH_SECRET="your-generated-secret-here"
+
+# From Google Cloud Console > Credentials > Your OAuth 2.0 Client
+AUTH_GOOGLE_ID="your-client-id.apps.googleusercontent.com"
+AUTH_GOOGLE_SECRET="your-google-client-secret"
+
+# IMPORTANT: This must exactly match the URL you are accessing the app from.
+# If this doesn't match, Google OAuth will fail or redirect to the wrong place.
+#
+# For local dev (no ngrok):
+NEXTAUTH_URL=http://localhost:3000
+#
+# For local dev with ngrok:
+# NEXTAUTH_URL=https://checkhen.ngrok.io
+#
+# For production:
+# NEXTAUTH_URL=http://bu.checkhen.com:3000
 ```
 
 ---
 
-## Running the Project
+## Development Mode
 
-### Development Mode (Using `yarn`)
-1. Set up the database:
-   - Ensure Docker is running.
-   - Start the database using Docker Compose:
-     ```bash
-     docker-compose up -d db
-     ```
-   - Run Prisma migrations:
-     ```bash
-     yarn prisma migrate dev
-     ```
+Development runs the Next.js app locally with `yarn dev`, while the database and socket server run in Docker.
 
-2. Start the development server:
-   ```bash
-   yarn dev
-   ```
-3. The application will be available at `http://localhost:3000`.
+### Step 1: Start the database and socket server
 
-4. To stop the development server, press `Ctrl+C`.
+```bash
+# From the repo root
+docker compose up db socket -d
+```
+
+This starts:
+- PostgreSQL on port `5432`
+- Socket.io server on port `6060`
+
+### Step 2: Install dependencies (first time or after pulling changes)
+
+```bash
+cd checkhen
+yarn install
+```
+
+### Step 3: Set up your `.env.local`
+
+Follow the [Environment Variables](#environment-variables) section above. Make sure `NEXTAUTH_URL` matches how you're accessing the app:
+- `http://localhost:3000` if testing only on your machine
+- `https://checkhen.ngrok.io` if using ngrok
+
+> **Getting a 502 or auth error through ngrok?** The most common cause is a `NEXTAUTH_URL` mismatch — if `.env.local` has `NEXTAUTH_URL=http://localhost:3000` but you're accessing the app via `https://checkhen.ngrok.io`, NextAuth will generate wrong callback URLs and fail. Make sure the value matches exactly how you're opening the app.
+
+> **BU network required:** Google OAuth with BU accounts requires you to be on **eduroam** (or BU VPN). Authentication will fail if you're on a non-BU network.
+
+### Step 4: (If using ngrok) Start your ngrok tunnel
+
+In a separate terminal:
+
+```bash
+ngrok http --url=checkhen.ngrok.io 3000
+```
+
+Keep this running in the background for the whole dev session.
+
+### Step 5: Start the Next.js dev server
+
+```bash
+cd checkhen
+yarn dev
+```
+
+> **OAuth "state mismatch" errors?** This is a known NextAuth v4 + Google PKCE timing issue in hot-reload mode — state cookies set during OAuth sometimes don't survive the redirect when Next.js reloads mid-auth. Use `yarn build && yarn start` instead of `yarn dev` if you hit this. See [Known Issues](#known-issues).
+
+The app is now available at:
+- `http://localhost:3000` (always)
+- `https://checkhen.ngrok.io` (if ngrok is running)
+
+### Step 6: Stop everything
+
+```bash
+# Stop Next.js: Ctrl+C in its terminal
+# Stop Docker services:
+docker compose down
+```
 
 ---
 
-### Production Mode (Using `docker compose`)
-1. Run the GitHub workflow to build the CheckHen image with the required environment variables
-2. Edit `docker-compose.yml` to reference the image tag you created.
+## Production Mode
 
-1. Build and start the application:
-   ```bash
-   docker-compose up
-   ```
-2. The application will be available at `http://localhost:3000`.
+Production runs everything (Next.js, socket server, and database) in Docker Compose.
 
-3. To stop the application, run:
-   ```bash
-   docker-compose down
-   ```
+### Step 1: Set environment variables in your shell
+
+The `docker-compose.yml` reads `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and `NEXTAUTH_URL` from your shell environment. Set them before running compose.
+
+**Option A — Export in your shell:**
+```bash
+export AUTH_SECRET="your-secret"
+export AUTH_GOOGLE_ID="your-client-id.apps.googleusercontent.com"
+export AUTH_GOOGLE_SECRET="your-google-client-secret"
+export NEXTAUTH_URL="http://bu.checkhen.com:3000"
+```
+
+**Option B — Create a `.env` file in the repo root** (Docker Compose reads it automatically):
+```env
+AUTH_SECRET=your-secret
+AUTH_GOOGLE_ID=your-client-id.apps.googleusercontent.com
+AUTH_GOOGLE_SECRET=your-google-client-secret
+NEXTAUTH_URL=http://bu.checkhen.com:3000
+```
+
+> Do **not** commit this root `.env` file either — it's in `.gitignore`.
+
+### Step 2: Build and start all services
+
+```bash
+# From the repo root
+docker compose up --build -d
+```
+
+This builds and starts:
+- PostgreSQL on port `5432`
+- Socket.io server on port `6060`
+- Next.js app on port `3000`
+
+### Step 3: Access the app
+
+Open `http://bu.checkhen.com:3000`, checkhen.ngrok.io, (or your actual production URL) in a browser.
+
+### Step 4: Stop all services
+
+```bash
+docker compose down
+```
 
 ---
 
-### Running on a Raspberry Pi
+## First-Time Database Setup
 
-You can run CheckHen on a Raspberry Pi 3B+ or better. This setup requires a USB WiFi dongle that supports AP mode and a USB power supply.
+The first time you run the project (or after pulling schema changes), you need to apply Prisma migrations.
 
-#### Prerequisites
-1. A Raspberry Pi 3B+ or better.
-2. A USB WiFi dongle that supports AP mode.
-3. A USB power supply for the Raspberry Pi.
-4. A microSD card with Raspberry Pi OS installed.
+**For development:**
+```bash
+cd checkhen
+yarn migrate:dev
+```
 
-#### Steps
-1. **Set up RaspAP**:
-   - Install RaspAP by following the instructions on the [RaspAP website](https://docs.raspap.com/).
-   - Configure RaspAP as a WiFi repeater:
-     - Connect the Raspberry Pi to your primary WiFi network.
-     - Use the USB WiFi dongle to create an access point (AP) for clients to connect to.
+**For production (inside Docker after containers are up):**
+```bash
+docker exec -it 490-test npx prisma migrate deploy
+```
 
-2. **Install Docker and Docker Compose**:
-   - Update the Raspberry Pi:
-     ```bash
-     sudo apt update && sudo apt upgrade -y
-     ```
-   - Install Docker:
-     ```bash
-     curl -fsSL https://get.docker.com -o get-docker.sh
-     sudo sh get-docker.sh
-     ```
-   - Add the `pi` user to the Docker group:
-     ```bash
-     sudo usermod -aG docker pi
-     ```
-     Log out and back in for the changes to take effect.
-   - Install Docker Compose:
-     ```bash
-     sudo apt install -y docker-compose
-     ```
+Or, if running outside Docker for the first time:
+```bash
+cd checkhen
+npx prisma migrate deploy
+```
 
-3. **Run CheckHen**:
-   - Clone the repository:
-     ```bash
-     git clone https://github.com/your-repo/checkhen.git
-     cd checkhen
-     ```
-   - Follow the instructions in the [Production Mode](#production-mode) section to build and start the application using Docker Compose.
+---
 
-4. **Access the Application**:
-   - Connect a client device to the Raspberry Pi's WiFi network.
-   - Open a browser and navigate to `https://checkhen.com`. This domain will always point to the Raspberry Pi when connected to the RaspAP network.
+## Admin Access
 
-#### Using Pi-hole for Website Blocking
+Admin access is determined by the `ADMIN_EMAILS` environment variable. It holds a comma-separated list of BU email prefixes (the part before `@bu.edu`).
 
-You can use Pi-hole to block all websites except a few whitelisted ones, ensuring that users connected to the Raspberry Pi's network can only access specific domains.
+For example:
+```
+ADMIN_EMAILS=alicja,langd0n,aploog
+```
 
-1. **Install Pi-hole**:
-   - Follow the official installation guide on the [Pi-hole website](https://pi-hole.net/).
+This grants admin access to `alicja@bu.edu`, `langd0n@bu.edu`, and `aploog@bu.edu`. All other `@bu.edu` users are treated as students.
 
-2. **Configure Pi-hole**:
-   - Access the Pi-hole admin interface (usually at `http://<raspberry-pi-ip>/admin`).
-   - Go to the "Group Management" > "Domains" section.
-   - Add the domains you want to whitelist (e.g., `checkhen.com`, `clerk.dev`, etc.) under the "Whitelist" tab.
+> **Security note:** Use `ADMIN_EMAILS` (not `NEXT_PUBLIC_ADMIN_EMAILS`). Variables prefixed with `NEXT_PUBLIC_` are embedded in the browser bundle and visible to anyone — admin email prefixes should stay server-only.
 
-3. **Block All Other Domains**:
-   - Go to the "Group Management" > "Domains" section.
-   - Add `*` (wildcard) under the "Blacklist" tab to block all other domains.
-
-4. **Set Pi-hole as the DHCP and DNS Server**:
-   - In the Pi-hole admin interface, go to "Settings" > "DHCP".
-   - Enable the DHCP server and configure the IP range for your network.
-   - Save the changes.
-   - Disable the DHCP server in RaspAP:
-     - Access the RaspAP admin interface (usually at `http://10.3.141.1`).
-     - Go to "Networking" > "DHCP Server" and disable the DHCP server.
-     - Save the changes and restart the RaspAP service.
-
-5. **Test the Configuration**:
-   - Reconnect client devices to the Raspberry Pi's WiFi network.
-   - Verify that only the whitelisted websites are accessible.
+All routes under `/admin/*` are protected by middleware and redirect unauthenticated users to sign in.
 
 ---
 
 ## Pages Overview
 
-### Public Pages
-- **Home (`/`)**: Displays the current class session, allows students to raise their hand, and provides a chat interface.
-- **Chat (`/chat`)**: Displays the chat interface for students.
+### Student Pages
+| Page | Path | Description |
+|---|---|---|
+| Lobby | `/join` | Landing page after sign-in; shows active classes or "no class active"; students join from here |
+| Home / Check-in | `/` | Check into the active class and receive your anonymous name |
+| Student Dashboard | `/student` | Raise your hand, send chat messages, signal pace |
+| Chat | `/chat` | View and send class chat messages |
+| Profile | `/profile` | Set preferred name, pronouns, bio, fun fact, allergies, and profile picture |
 
 ### Admin Pages
-- **Dashboard (`/admin/dashboard`)**: Allows admins to manage class sessions, view raised hands, and check-in data.
-- **Chat (`/admin/chat`)**: Displays the chat interface for admins to monitor messages.
+| Page | Path | Description |
+|---|---|---|
+| Lobby | `/join` | Same lobby; instructors see a button to create a new class |
+| Dashboard | `/admin/dashboard` | Start/end class, view check-ins, manage hand raises, monitor pace signals |
+| Admin Chat | `/admin/chat` | View all student chat messages |
+| Analytics | `/admin/analytics` | Per-session and all-time participation metrics; see [Analytics Dashboard](#analytics-dashboard) |
 
-### API Endpoints
-- **Student APIs**:
-  - `/api/student/check-in`: Handles student check-ins.
-  - `/api/student/fetch-check-in`: Fetches check-in data for a student.
-  - `/api/student/send-chat`: Sends a chat message.
-  - `/api/student/fetch-all-chat`: Fetches all chat messages.
-  - `/api/student/fetch-last-chat`: Fetches the latest chat message.
-  - `/api/student/toggle-vhr`: Toggles the "raise hand" status.
-  - `/api/student/fetch-hand-raise`: Fetches the student's hand-raise status.
+### Anonymous Names
 
-- **Admin APIs**:
-  - `/api/admin/start-new-class`: Starts a new class session.
-  - `/api/admin/end-class-early`: Ends the current class session early.
-  - `/api/admin/fetch-check-ins`: Fetches all check-ins for the current class.
-  - `/api/admin/fetch-hand-raise`: Fetches all raised hands for the current class.
-  - `/api/admin/ack-hand-raise`: Acknowledges a raised hand.
-  - `/api/admin/rate-hand-raise`: Rates a raised hand as productive or not.
-  - `/api/admin/fetch-all-chat`: Fetches all chat messages for the current class.
-  - `/api/admin/fetch-last-chat`: Fetches the latest chat message for the current class.
+When a student checks into a class, they are automatically assigned an anonymous name in the format **positive adjective + animal** (e.g., "Swift Panda", "Calm Otter"). All word lists use only positive adjectives — no negative words. This name is consistent for the student within a class session and is used in chat and hand raise displays so the instructor can distinguish students without seeing real names.
+
+### Pace Signals
+
+Students can send one of two pace signals:
+- **Slow down** — the class is moving too fast
+- **Ready to move on** — the student is ready for the next topic
+
+The admin dashboard shows a live count of each signal. Admins can reset the counts at any time.
 
 ---
 
-## Additional Notes
+## Analytics Dashboard
 
-- **Socket Server**: The project includes a socket server for real-time updates. Ensure the socket server is running on port `6060` as defined in `docker-compose.yml`.
-- **Grafana**: A Grafana instance is included for monitoring and analytics. Access it at `http://localhost:3001` with default credentials (`admin:admin`).
+The analytics page (`/admin/analytics`) has two views:
 
-### Known Issues
-1. **Admin Dashboard Socket Connection**: The admin dashboard requires a manual refresh to ensure the socket connects properly.
-2. **Grafana Datasource UID**: The Grafana instance assigns a random UID to the datasource, which prevents the dashboard from locating it correctly.
+**Per-session view** — select a specific class session to see:
+- Each student's duration, hand raise count, pace signals, and engagement score
+- Sortable columns: Name (alphabetical), Duration, Hand Raises, Score
+- Hover over bars in the pace signal chart to see student names
+
+**All-sessions view** — aggregated across all sessions for a class template:
+- Shows preferred name, email, total duration, total hand raises, and cumulative score
+- Anonymous students and one-off columns (check-in/out times, pace signals) are omitted
+
+**Engagement score** — displayed per student, max 100 points:
+- Attendance: up to 50 pts (timestamped check-in)
+- Hand raises: up to 30 pts (10 pts each, capped at 3)
+- Pace signal participation: up to 20 pts
+
+Hover the info icon (ⓘ) next to the score header in the UI for an explanation.
+
+---
+
+## Test Data / Seed Scripts
+
+To populate the app with realistic fake data for testing the analytics dashboard:
+
+```bash
+cd checkhen
+
+# Create a ClassTemplate and N sessions (spaced weekly), each with fake students,
+# check-ins, hand raises, and pace signals
+yarn seed --sessions=5
+
+# Remove all generated test data
+yarn seed:clean
+```
+
+---
+
+## Running on a Raspberry Pi
+
+You can run CheckHen on a Raspberry Pi 3B+ or better. This is useful for running the app on a local classroom network without internet access, using RaspAP to create a WiFi access point.
+
+### Prerequisites
+- Raspberry Pi 3B+ or newer
+- USB WiFi dongle that supports AP mode
+- microSD card with Raspberry Pi OS installed
+
+The `pi-setup/` directory contains shell scripts that automate the full Pi configuration.
+
+### First-time setup (run once)
+
+```bash
+git clone https://github.com/a1icja/checkhen.git
+cd checkhen
+sudo ./pi-setup/install.sh
+```
+
+`install.sh` installs `hostapd` and Docker, copies the systemd unit files, and makes the exam scripts executable. After it finishes, follow the printed instructions:
+
+1. Edit `/etc/hostapd/hostapd-exam.conf` — set your SSID and passphrase.
+2. Edit `dns/allowlist.conf` — update the `checkhen.local` IP to match your Pi's `wlan0` address (`ip addr show wlan0`).
+3. Set your environment variables and start the app (see [Production Mode](#production-mode)):
+   ```bash
+   docker compose up --build -d
+   ```
+
+### Starting and stopping exam mode
+
+Exam mode brings up the WiFi access point, NAT rules, and DNS filter — students connected to the Pi's network can only reach CheckHen.
+
+```bash
+# Start exam mode (AP + DNS filtering)
+sudo ./pi-setup/start-exam.sh
+
+# Stop exam mode
+sudo ./pi-setup/stop-exam.sh
+```
+
+**4. Access the app:**
+Connect to the Raspberry Pi's WiFi network and navigate to `http://<pi-wlan0-ip>:3000` in a browser.
+
+---
+
+## Known Issues
+
+- **Admin dashboard socket connection:** The admin dashboard may require a manual page refresh after first load to fully connect to the socket server.
+
+- **NextAuth PKCE / hot-reload bug:** State cookies set during OAuth can fail to survive the redirect when Next.js hot-reloads mid-auth. If you see a "state mismatch" or similar error during sign-in in `yarn dev`, use `yarn build && yarn start` instead.
+
+- **Docker rebuild migrations:** After running `docker compose up --build`, apply any pending migrations inside the container:
+  ```bash
+  docker exec 490-test npx prisma migrate dev --name add_performance_indexes
+  ```
