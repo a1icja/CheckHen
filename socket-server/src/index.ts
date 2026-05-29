@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { PrismaClient } from "@prisma/client";
+import cron from "node-cron";
 
 const prisma = new PrismaClient(); // Initialize Prisma client for database operations
 
@@ -17,7 +18,6 @@ const handleSocketConnection = async (socket: Socket) => {
 
   // Validate required query parameters
   if (
-    !socket.handshake.query.clerkId ||
     !socket.handshake.query.classId ||
     !socket.handshake.query.email
   ) {
@@ -26,10 +26,6 @@ const handleSocketConnection = async (socket: Socket) => {
   }
 
   // Extract query parameters, handling cases where they might be arrays
-  const clerkId = Array.isArray(socket.handshake.query.clerkId)
-    ? socket.handshake.query.clerkId[0]
-    : socket.handshake.query.clerkId;
-
   const classId = Array.isArray(socket.handshake.query.classId)
     ? socket.handshake.query.classId[0]
     : socket.handshake.query.classId;
@@ -38,7 +34,7 @@ const handleSocketConnection = async (socket: Socket) => {
     ? socket.handshake.query.email[0]
     : socket.handshake.query.email;
 
-  console.log(clerkId, classId, email); // Log extracted parameters
+  console.log(classId, email); // Log extracted parameters
 
   // Upsert user in the database (create if not exists, otherwise update)
   await prisma.user.upsert({
@@ -47,7 +43,6 @@ const handleSocketConnection = async (socket: Socket) => {
     },
     update: {}, // No updates for existing users
     create: {
-      clerk_id: clerkId,
       email: email,
     },
   });
@@ -56,7 +51,7 @@ const handleSocketConnection = async (socket: Socket) => {
   let dbCheckIn = await prisma.checkIn.findFirst({
     where: {
       user: {
-        clerk_id: clerkId,
+        email: email,
       },
       class: {
         id: classId,
@@ -69,7 +64,7 @@ const handleSocketConnection = async (socket: Socket) => {
       data: {
         user: {
           connect: {
-            clerk_id: clerkId,
+            email: email,
           },
         },
         class: {
@@ -90,6 +85,38 @@ const handleSocketConnection = async (socket: Socket) => {
   socket.join(classId);
 };
 
+// Auto-start scheduled classes every minute
+cron.schedule("* * * * *", async () => {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const hhmm = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+
+  const templates = await prisma.classTemplate.findMany({
+    where: { daysOfWeek: { has: dayOfWeek }, startTime: hhmm },
+  });
+
+  for (const t of templates) {
+    // Avoid double-creating if one was already started in this minute window
+    const recentClass = await prisma.class.findFirst({
+      where: {
+        templateId: t.id,
+        createdAt: { gte: new Date(now.getTime() - 60000) },
+      },
+    });
+    if (!recentClass) {
+      await prisma.class.create({
+        data: {
+          name: t.name,
+          duration: t.duration,
+          color: t.color,
+          templateId: t.id,
+        },
+      });
+      console.log(`[cron] Auto-started class "${t.name}" from template ${t.id}`);
+    }
+  }
+});
+
 // Listen for new socket connections
 io.on("connection", async (socket) => {
   await handleSocketConnection(socket);
@@ -107,16 +134,27 @@ io.on("connection", async (socket) => {
   });
 
   socket.onAny((event, ...args) => {
+    const roomId = args[0]?.classId as string | undefined;
+    if (!roomId) return;
+
     if (event === "user-hand-update") {
-      io.sockets.emit("user-hand-update", args[0]);
+      io.to(roomId).emit("user-hand-update", args[0]);
     }
 
     if (event === "user-hand-acked") {
-      io.sockets.emit("check-raised-hands", args[0]);
+      io.to(roomId).emit("check-raised-hands", args[0]);
     }
 
     if (event === "chat-message-sent") {
-      io.sockets.emit("fetch-messages", args[0]);
+      io.to(roomId).emit("fetch-messages", args[0]);
+    }
+
+    if (event === "pace-signal-sent") {
+      io.to(roomId).emit("pace-signal-update", args[0]);
+    }
+
+    if (event === "pace-signals-reset") {
+      io.to(roomId).emit("pace-signals-reset", args[0]);
     }
   });
 });

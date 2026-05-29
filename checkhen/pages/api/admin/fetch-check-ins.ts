@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { clerkClient } from '@clerk/nextjs/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
 
 type ResponseData = {
@@ -11,6 +12,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
+
+  const session = await getServerSession(req, res, authOptions);
+  if (!session?.user?.email) return res.status(401).json({ message: 'Unauthorized' });
+
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',')
+    .map((e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`) || [];
+  if (!adminEmails.includes(session.user.email)) return res.status(403).json({ message: 'Forbidden: Admin only' });
 
   // Fetch the most recent class
   const dbCurrentClass = await prisma.class.findFirst({
@@ -29,10 +37,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(500).json({ message: 'No class found' });
   }
 
-  // Fetch all check-ins for the current class
+  // Fetch all check-ins for the current class where the student is still present (exclude admins)
   const dbCheckInUsers = await prisma.checkIn.findMany({
     where: {
       classId: dbCurrentClass.id,
+      isPresent: true,
+      user: {
+        email: { notIn: adminEmails },
+      },
     },
     include: {
       user: true,
@@ -57,22 +69,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   const resObject = [];
 
-  // Fetch user details from Clerk
-  const client = await clerkClient();
-
-  const clerkUsers = await client.users.getUserList({
-    userId: dbCheckInUsers.map((checkIn) => checkIn.user.clerk_id),
-    limit: dbCheckInUsers.length,
-  });
-
-  // Construct the response object with user details and hand raise counts
+  // Construct the response object with user details, anonymous names, and hand raise counts
   for (const checkIn of dbCheckInUsers) {
-    const clerkUser = clerkUsers.data.find((user) => user.id === checkIn.user.clerk_id);
-    if (!clerkUser) continue;
+    const user = checkIn.user;
+    const username = user.email.split('@')[0]; // Extract username from email
     resObject.push({
-      email: clerkUser.primaryEmailAddress?.emailAddress,
-      name: clerkUser.fullName,
+      id: checkIn.id,
+      email: user.email,
+      name: username,
+      anonymousName: checkIn.anonymousName,
+      joinTime: checkIn.updatedAt ?? checkIn.createdAt,
       handRaiseCount: handRaiseCounts[checkIn.userId] || 0,
+      userId: checkIn.userId,
+      user: {
+        email: user.email,
+        profilePicture: user.profilePicture ?? null,
+        foodAllergies: user.foodAllergies ?? null,
+        displayName: user.displayName ?? null,
+        namePronunciation: user.namePronunciation ?? null,
+        pronouns: user.pronouns ?? null,
+        bio: user.bio ?? null,
+      },
     });
   }
 

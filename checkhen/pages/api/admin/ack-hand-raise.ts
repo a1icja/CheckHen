@@ -1,3 +1,5 @@
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
 import type { NextApiRequest, NextApiResponse } from 'next'
 
@@ -14,9 +16,15 @@ export default async function handler(
     return res.status(405).json({ message: "Method Not Allowed" });
   }
 
+  const session = await getServerSession(req, res, authOptions);
+  if (!session?.user?.email) return res.status(401).json({ message: 'Unauthorized' });
+
+  const adminEmails = process.env.ADMIN_EMAILS?.split(',')
+    .map((e) => `${e.trim()}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN}`) || [];
+  if (!adminEmails.includes(session.user.email)) return res.status(403).json({ message: 'Forbidden: Admin only' });
+
   // Parse the request body to extract the user's email
-  const bodyJSON = JSON.parse(req.body);
-  const { email: userEmail } = bodyJSON;
+  const { email: userEmail } = req.body;
 
   // Find the first unacknowledged hand raise for the user
   const dbHandRaise = await prisma.handRaise.findFirst({

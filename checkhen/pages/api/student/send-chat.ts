@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getAuth } from '@clerk/nextjs/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
 import { prisma } from '@/lib/prisma';
 
 // Define the structure of the response data
@@ -14,25 +15,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  // Authenticate the user
-  const { userId } = getAuth(req);
-  if (!userId) {
+  // Get authenticated session
+  const session = await getServerSession(req, res, authOptions);
+  if (!session?.user?.email) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
   // Parse the message from the request body
-  const { message } = JSON.parse(req.body);
-
-  // Find the user in the database
-  const dbCheckInUser = await prisma.user.findFirst({
-    where: {
-      clerk_id: userId,
-    },
-  });
-
-  if (!dbCheckInUser) {
-    return res.status(500).json({ message: 'No user found' });
+  const { message } = req.body;
+  if (!message || typeof message !== 'string' || message.trim().length === 0 || message.length > 1000) {
+    return res.status(400).json({ message: 'Invalid message' });
   }
+
+  // Upsert the user in the database by email
+  const dbCheckInUser = await prisma.user.upsert({
+    where: { email: session.user.email },
+    update: {},
+    create: { email: session.user.email, isAdmin: false },
+  });
 
   // Fetch the most recent class
   const dbCurrentClass = await prisma.class.findFirst({
@@ -49,14 +49,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const classEnd = new Date(dbCurrentClass.createdAt.getTime() + dbCurrentClass.duration * 60000);
   if (classEnd < new Date()) return res.status(500).json({ message: 'No class found' });
 
-  if (!dbCurrentClass.checkIns.some((checkIn) => checkIn.userId === dbCheckInUser.id)) {
+  // Find user's check-in to get their anonymous name
+  const userCheckIn = dbCurrentClass.checkIns.find((checkIn) => checkIn.userId === dbCheckInUser.id);
+
+  if (!userCheckIn) {
     return res.status(500).json({ message: 'No check in found' });
   }
 
-  // Create a new chat message in the database
+  // Create a new chat message in the database with anonymous name
   const newMessage = await prisma.chatMessage.create({
     data: {
       message,
+      anonymousName: userCheckIn.anonymousName,
       user: {
         connect: {
           id: dbCheckInUser.id,
